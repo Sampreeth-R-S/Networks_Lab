@@ -201,6 +201,8 @@ int main(int argc,char* argv[])
                 for(int i=0;i<1000;i++)buffer[i]='\0';
                 sprintf(buffer,"550 No such user\r\n");
                 send(newsockfd,buffer,strlen(buffer),0);
+                close(newsockfd);
+                exit(0);
             }
             for(int i=0;i<1000;i++)buffer[i]='\0';
             receive(newsockfd,buffer);

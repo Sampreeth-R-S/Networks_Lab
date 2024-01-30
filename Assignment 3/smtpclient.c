@@ -165,10 +165,15 @@ void receive(int sockfd,char* buffer)
 
 int main(int argc,char* argv[])
 {
+    if(argc<3)
+    {
+        printf("Usage: ./smtpclient <ip> <port>\n");
+        exit(0);
+    }
     struct sockaddr_in servaddr;
     servaddr.sin_family = AF_INET;
-    inet_aton("127.0.0.1", &servaddr.sin_addr);
-    servaddr.sin_port = htons(atoi(argv[1]));
+    inet_aton(argv[1], &servaddr.sin_addr);
+    servaddr.sin_port = htons(atoi(argv[2]));
     int sockfd = socket(AF_INET,SOCK_STREAM,0);
     if(sockfd<0)
     {
@@ -250,6 +255,11 @@ int main(int argc,char* argv[])
     receive(sockfd,buffer);
     printf("Response received: %s",buffer);
     tokenise(buffer,result);
+    if(strcmp(result[0],"550")==0)
+    {
+        printf("No such user\n");
+        exit(0);
+    }
     for(int i=0;i<1000;i++)buffer[i]='\0';
     sprintf(buffer,"DATA\r\n");
     send(sockfd,buffer,strlen(buffer),0);
