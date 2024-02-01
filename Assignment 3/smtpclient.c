@@ -93,7 +93,7 @@ int checksyntax(char**mail,char sender[],char*receivers)
     strcpy(sender,temp);
     i=0;
     for(int k=0;k<100;k++)temp[k]='\0';
-    while(mail[1][i]!=' ')
+    while(mail[1][i]!=' '&&mail[1][i]!='\n')
     {
         temp[i]=mail[1][i];
         i++;
@@ -121,7 +121,7 @@ int checksyntax(char**mail,char sender[],char*receivers)
     strcpy(receivers,temp);
     i=0;
     for(int k=0;k<100;k++)temp[k]='\0';
-    while(mail[2][i]!=' ')
+    while(mail[2][i]!=' '&&mail[2][i]!='\n')
     {
         temp[i]=mail[2][i];
         i++;
