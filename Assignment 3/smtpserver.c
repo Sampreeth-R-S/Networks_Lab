@@ -11,13 +11,13 @@
 int checkuser(char* user)
 {
     FILE* f=fopen("user.txt","r");
-    printf("%s\n",user);
+    //printf("%s\n",user);
     if(f==NULL)
     {
         printf("Error opening file\n");
         exit(0);
     }
-    for(int i=0;i<strlen(user);i++)printf("%d ",user[i]);
+    //for(int i=0;i<strlen(user);i++)printf("%d ",user[i]);
     while(!feof(f))
     {
         char buffer[1000];
@@ -28,22 +28,23 @@ int checkuser(char* user)
         //printf("Hello\n");
         while(buffer[i]!=' ')
         {
-            printf("%d\n",i);
+            //printf("%d\n",i);
             username[i]=buffer[i];
             i++;
             //printf("%d\n",i);
         }
         username[i]='\0';
-        printf("%s=user,%s=username,%d=strcmp\n",user,username,strcmp(username,user));
+        //printf("%s=user,%s=username,%d=strcmp\n",user,username,strcmp(username,user));
         if(strcmp(username,user)==0)
         {
             fclose(f);
-            printf("Returning\n");
+            //printf("Returning\n");
             return 1;
         }
         //printf("Hello\n");
         fflush(stdout);
     }
+    fclose(f);
     return 0;
 }
 void tokenise(char* buffer,char** result)
@@ -86,14 +87,14 @@ void receive(int sockfd,char* buffer)
         for(;curpointer<prevlen&&count<2;curpointer++)
         {
             buffer[i++]=buffer2[curpointer];
-            printf("%d ",buffer2[curpointer]);fflush(stdout);
+            //printf("%d ",buffer2[curpointer]);fflush(stdout);
             if(buffer2[curpointer]==10)count++;
             if(buffer2[curpointer]==13)count++;
             //printf("%d=count\n",count);
         }
         if(prevlen==0)break;
     }
-    printf("Receive returned\n");
+    //printf("Receive returned\n");
     //fflush(stdout);
 }
 int main(int argc,char* argv[])
@@ -182,13 +183,13 @@ int main(int argc,char* argv[])
         int curreceiver=0;
         while(strcmp(result[0],"RCPT")==0)
         {
-            printf("Hello\n");
+            //printf("Hello\n");
             char username[1000];
             for(int i=0;i<1000;i++)username[i]='\0';
             for(int i=1;i<strlen(result[2])-1;i++)username[i-1]=result[2][i];
             username[strlen(result[2])-2]='\0';
             int flag=checkuser(username);
-            printf("%d\n",flag);
+            //printf("%d\n",flag);
             if(flag)
             {
                 receivers[curreceiver++]=strdup(username);
@@ -207,7 +208,7 @@ int main(int argc,char* argv[])
             for(int i=0;i<1000;i++)buffer[i]='\0';
             receive(newsockfd,buffer);
             tokenise(buffer,result);
-            printf("%s\n",result[0]);
+            //printf("%s\n",result[0]);
         }
         printf("Data\n");
         fflush(stdout);
@@ -231,12 +232,12 @@ int main(int argc,char* argv[])
             {
                 break;
             }
-            printf("%d\n",curline);
-            printf("%s\n",buffer);
-            for(int i=0;i<strlen(buffer);i++)printf("%d ",buffer[i]);
-            printf("\n");
+            //printf("%d\n",curline);
+            //printf("%s\n",buffer);
+            //for(int i=0;i<strlen(buffer);i++)printf("%d ",buffer[i]);
+            //printf("\n");
         }
-        printf("Hello\n");
+        //printf("Hello\n");
         for(int i=0;i<1000;i++)buffer[i]='\0';
         sprintf(buffer,"250 OK message accepted for delivery\r\n");
         send(newsockfd,buffer,strlen(buffer),0);

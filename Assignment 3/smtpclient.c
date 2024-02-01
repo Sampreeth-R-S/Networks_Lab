@@ -151,7 +151,7 @@ void receive(int sockfd,char* buffer)
         for(;curpointer<prevlen&&count<2;curpointer++)
         {
             buffer[i++]=buffer2[curpointer];
-            printf("%d ",buffer2[curpointer]);fflush(stdout);
+            //printf("%d ",buffer2[curpointer]);fflush(stdout);
             if(buffer2[curpointer]==10)count++;
             if(buffer2[curpointer]==13)count++;
             //printf("%d=count\n",count);
@@ -159,7 +159,7 @@ void receive(int sockfd,char* buffer)
         }
         if(prevlen==0)break;
     }
-    printf("Receive returned\n");
+    //printf("Receive returned\n");
     //fflush(stdout);
 }
 
@@ -247,7 +247,7 @@ int main(int argc,char* argv[])
     sprintf(buffer,"MAIL FROM: <%s>\r\n",sender);
     send(sockfd,buffer,strlen(buffer),0);
     receive(sockfd,buffer);
-    printf("Response received\n");
+    printf("Response received: %s\n",buffer);
     tokenise(buffer,result);
     for(int i=0;i<1000;i++)buffer[i]='\0';
     sprintf(buffer,"RCPT TO: <%s>\r\n",receivers);
@@ -276,12 +276,12 @@ int main(int argc,char* argv[])
     for(int i=2;i<100;i++)
     {
         send(sockfd,mail[i],strlen(mail[i]),0);
-        for(int k=0;k<strlen(mail[i]);k++)printf("%d ",mail[i][k]);
-        printf("\n");
+        //for(int k=0;k<strlen(mail[i]);k++)printf("%d ",mail[i][k]);
+        //printf("\n");
         if(strcmp(mail[i],".\r\n")==0)break;
-        printf("%d\n",i);
+        //printf("%d\n",i);
     }
-    printf("Hello\n");
+    //printf("Hello\n");
     receive(sockfd,buffer);
     printf("Response received: %s\n",buffer);
     for(int i=0;i<1000;i++)buffer[i]='\0';
