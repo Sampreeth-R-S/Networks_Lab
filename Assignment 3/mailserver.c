@@ -251,7 +251,7 @@ int main(int argc,char* argv[])
         }
         printf("Bye\n");
         for(int i=0;i<1000;i++)buffer[i]='\0';
-        sprintf(buffer,"250 coldmail.com closing connection\r\n");
+        sprintf(buffer,"221 coldmail.com closing connection\r\n");
         send(newsockfd,buffer,strlen(buffer),0);
         close(newsockfd);
         for(int i=0;i<curreceiver;i++)
