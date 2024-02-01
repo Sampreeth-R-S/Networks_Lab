@@ -65,7 +65,7 @@ int checksyntax(char**mail,char sender[],char*receivers)
     char temp[100];
     for(int i=0;i<100;i++)temp[i]='\0';
     int i=0;
-    while(mail[0][i]!=' ')
+    while(mail[0][i]!=' '&&mail[0][i]!='\n')
     {
         temp[i]=mail[0][i];
         i++;
@@ -255,6 +255,12 @@ int main(int argc,char* argv[])
         receive(sockfd,buffer);
         printf("Response received: %s\n",buffer);
         tokenise(buffer,result);
+        if(strcmp(result[0],"550")==0)
+        {
+            printf("User specified in FROM does not exist\n");
+            close(sockfd);
+            continue;
+        }
         for(int i=0;i<1000;i++)buffer[i]='\0';
         sprintf(buffer,"RCPT TO: <%s>\r\n",receivers);
         send(sockfd,buffer,strlen(buffer),0);
