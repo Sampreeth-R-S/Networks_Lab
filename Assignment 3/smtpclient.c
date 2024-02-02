@@ -18,7 +18,7 @@ void tokenise(char* buffer,char** result)
     }
     while(buffer[i]!='\r')
     {
-        if(buffer[i]==' ')
+        if(buffer[i]==' '||buffer[i]==':')
         {
             result[k][j]='\0';
             k++;
