@@ -239,17 +239,18 @@ void manage_mail(char *server_IP, int pop3_port, char *username, char *password)
     {
         temp++;
         line_no=0;
+        printf("%d ",temp);
         sprintf(buffer, "RETR %d\r\n", temp);
         send(sockfd, buffer, strlen(buffer), 0);
         receive(sockfd, buffer);
-        printf("%s", buffer);
+        //printf("%s", buffer);
         while (1)
         {
-            printf("%d ", (line_no + 1));
+            //printf("%d ", (line_no + 1));
             if (line_no == 0)
             {
                 receive(sockfd, buffer);
-                for (int i = 6; i < strlen(buffer); i++)
+                for (int i = 6; i < strlen(buffer)-2; i++)
                 {
                     printf("%c", buffer[i]);
                 }
@@ -258,7 +259,7 @@ void manage_mail(char *server_IP, int pop3_port, char *username, char *password)
             else if (line_no == 2)
             {
                 receive(sockfd, buffer);
-                for (int i = 10; i < strlen(buffer); i++)
+                for (int i = 10; i < strlen(buffer)-2; i++)
                 {
                     printf("%c", buffer[i]);
                 }
@@ -267,7 +268,7 @@ void manage_mail(char *server_IP, int pop3_port, char *username, char *password)
             else if (line_no == 4)
             {
                 receive(sockfd, buffer);
-                for (int i = 8; i < strlen(buffer); i++)
+                for (int i = 8; i < strlen(buffer)-2; i++)
                 {
                     printf("%c", buffer[i]);
                 }
@@ -275,7 +276,7 @@ void manage_mail(char *server_IP, int pop3_port, char *username, char *password)
             else
             {
                 receive(sockfd, buffer);
-                printf("%s", buffer);
+                //printf("%s", buffer);
             }
             line_no++;
             if (strcmp(buffer, ".\r\n") == 0)
@@ -342,7 +343,7 @@ void manage_mail(char *server_IP, int pop3_port, char *username, char *password)
     if(strcmp(buffer,"goodbye\r\n")==0)
     {
         printf("Goodbye\n");
-        clock(sockfd);
+        close(sockfd);
         return;
     }
     else

@@ -71,16 +71,24 @@ int checkpass(char* user,char* pass)
             i++;
         }
         username[i]='\0';
+        for(int i=0;i<strlen(username);i++)printf("%d ",username[i]);
+        printf("\n");
+        printf("%s %d\n",username,strcmp(username,user));
         if(strcmp(username,user)==0)
         {
             while(buffer[i]==' ')i++;
+            printf("Hello\n");
             int j=0;
             char password[1000];
-            while(buffer[i]!='\n')
+            printf("buffer[i]=%c ",buffer[i]);
+            while(buffer[i]!='\n'&&buffer[i]!='\r')
             {
                 password[j++]=buffer[i++];
             }
             password[j]='\0';
+            printf("%s ",password);
+            for(int i=0;i<strlen(password);i++)printf("%d ",password[i]);
+            fflush(stdout);
             if(strcmp(password,pass)==0)
             {
                 fclose(f);
@@ -313,7 +321,7 @@ int main(int argc,char*argv[])
         FILE* fp=fopen(filepath,"r");
         if(fp==NULL)
         {
-            sprintf(buffer,"-OK empty mailbox\r\n");
+            sprintf(buffer,"+OK empty mailbox\r\n");
             send(newsockfd,buffer,strlen(buffer),0);
             sprintf(buffer,"+OK POP3 server signing off\r\n");
             send(newsockfd,buffer,strlen(buffer),0);
@@ -389,6 +397,8 @@ int main(int argc,char*argv[])
                     send(newsockfd,buffer,strlen(buffer),0);
                     continue;
                 }
+                sprintf(buffer,"+OK %d octets\r\n",maillen[index]);
+                send(newsockfd,buffer,strlen(buffer),0);
                 int size=0;
                 char temp[1000];
                 while(fgets(temp,1000,fp)!=NULL)
