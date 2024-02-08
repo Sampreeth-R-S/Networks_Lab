@@ -406,13 +406,14 @@ int main(int argc, char* argv[])
             {
                 receive(newsockfd,buffer);
                 tokenise(buffer,result);
+                printf("%s\n",result[0]);
                 int i=0;
                 while(result[0][i])
                 {
                     result[0][i]=toupper(result[0][i]);
                     i++;
                 }
-                if(strcmp("STAT",result[0]))
+                if(strcmp("STAT",result[0])==0)
                 {
                     //count=stat(filepath,&num,delete);
                     int tempcount,tempnum;
@@ -492,13 +493,14 @@ int main(int argc, char* argv[])
                     }
                     else{
                         sprintf(buffer,"+OK %d octets\r\n",maillen[index-1]);
+                        send(newsockfd,buffer,strlen(buffer),0);
                         FILE* f=fopen(filepath,"r");
                         if(f==NULL)
                         {
                             printf("Error opening file\n");
                             exit(0);
                         }
-                        int cur=0;
+                        int cur=1;
                         while(!feof(f))
                         {
                             if(cur>index)
@@ -510,6 +512,9 @@ int main(int argc, char* argv[])
                             if(cur==index)
                             {
                                 send(newsockfd,temp,strlen(temp),0);
+                                printf("Sending %s\n",temp);
+                                for(int i=0;i<strlen(temp);i++)printf("%d ",temp[i]);
+                                printf("\n");
                             }
                             if(strcmp(temp,".\r\n")==0)
                             {

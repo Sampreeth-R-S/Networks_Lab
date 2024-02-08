@@ -149,37 +149,29 @@ int checksyntax(char **mail, char sender[], char *receivers)
 char buffer2[1000];
 int curpointer = 0;
 int prevlen = 0;
-void receive(int sockfd, char *buffer)
+void receive(int sockfd,char* buffer)
 {
-    int i = 0;
-    int count = 0;
-    for (int i = 0; i < 1000; i++)
-        buffer[i] = '\0';
-    while (count < 2)
+    int i=0;int count=0;
+    for(int i=0;i<1000;i++)buffer[i]='\0';
+    while(count<2)
     {
-        if (curpointer == prevlen)
-        {
-            for (int i = 0; i < 1000; i++)
-                buffer2[i] = '\0';
-            prevlen = recv(sockfd, buffer2, 1000, 0);
-            curpointer = 0;
+        if(curpointer==prevlen){
+            for(int i=0;i<1000;i++)buffer2[i]='\0';
+            prevlen=recv(sockfd,buffer2,1000,0);
+            curpointer=0;
         }
-        for (; curpointer < prevlen && count < 2; curpointer++)
+        for(;curpointer<prevlen&&count<2;curpointer++)
         {
-            buffer[i++] = buffer2[curpointer];
-            // printf("%d ",buffer2[curpointer]);fflush(stdout);
-            if (buffer2[curpointer] == 10)
-                count++;
-            if (buffer2[curpointer] == 13)
-                count++;
-            // printf("%d=count\n",count);
-            // curpointer=k;
+            buffer[i++]=buffer2[curpointer];
+            //printf("%d ",buffer2[curpointer]);fflush(stdout);
+            if(buffer2[curpointer]==10)count++;
+            if(buffer2[curpointer]==13)count++;
+            //printf("%d=count\n",count);
         }
-        if (prevlen == 0)
-            break;
+        if(prevlen==0)break;
     }
-    // printf("Receive returned\n");
-    // fflush(stdout);
+    //printf("Receive returned\n");
+    //fflush(stdout);
 }
 
 void manage_mail(char *server_IP, int pop3_port, char *username, char *password)
@@ -235,7 +227,7 @@ void manage_mail(char *server_IP, int pop3_port, char *username, char *password)
 
     int mail_count;
     int total_size;
-    sprintf(buffer, "LIST\r\n");
+    sprintf(buffer, "STAT\r\n");
     send(sockfd, buffer, strlen(buffer), 0);
     receive(sockfd, buffer);
     sscanf(buffer, "+OK %d %d", &mail_count, &total_size);
@@ -310,10 +302,16 @@ void manage_mail(char *server_IP, int pop3_port, char *username, char *password)
         }
         sprintf(buffer, "RETR %d\r\n", choice);
         send(sockfd, buffer, strlen(buffer), 0);
+        //printf("Hello\n");
         while(1)
         {
             receive(sockfd, buffer);
             printf("%s", buffer);
+            for(int i=0;i<strlen(buffer);i++)
+            {
+                printf("%d ",buffer[i]);
+            }
+            printf("\n");
             if (strcmp(buffer, ".\r\n") == 0)
                 break;
         }
