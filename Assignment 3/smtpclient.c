@@ -3,46 +3,44 @@
 #include <unistd.h>
 #include <string.h>
 #include <sys/types.h>
-#include <sys/socket.h>
+#include <sys/socket.h> 
 #include <netinet/in.h>
 #include <arpa/inet.h>
 #include <fcntl.h>
-
-void tokenise(char *buffer, char **result)
+void tokenise(char* buffer,char** result)
 {
-    int i = 0;
-    int j = 0, k = 0;
-    for (int i = 0; i < 100; i++)
+    int i=0;
+    int j=0,k=0;
+    for(int i=0;i<100;i++)
     {
         free(result[i]);
-        result[i] = (char *)malloc(100 * sizeof(char));
+        result[i]=(char*)malloc(100*sizeof(char));
     }
-    while (buffer[i] != '\r')
+    while(buffer[i]!='\r')
     {
-        if (buffer[i] == ' ')
+        if(buffer[i]==' ')
         {
-            result[k][j] = '\0';
+            result[k][j]='\0';
             k++;
-            j = 0;
-            while (buffer[i] == ' ')
-                i++;
+            j=0;
+            while(buffer[i]==' ')i++;
             continue;
         }
         else
         {
-            result[k][j] = buffer[i];
+            result[k][j]=buffer[i];
             j++;
         }
         i++;
     }
-    result[k][j] = '\0';
+    result[k][j]='\0';
 }
-int checkmailsyntax(char *temp)
+int checkmailsyntax(char*temp)
 {
-    int i = 0;
-    while (temp[i] != '@')
+    int i=0;
+    while(temp[i]!='@')
     {
-        if (temp[i] == '\0')
+        if(temp[i]=='\0')
         {
             printf("Syntax error, @ expected in From\n");
             return 0;
@@ -50,96 +48,92 @@ int checkmailsyntax(char *temp)
         i++;
     }
     i++;
-    while (temp[i] != '\0')
+    while(temp[i]!='\0')
     {
-        if (temp[i] == '.')
-            break;
+        if(temp[i]=='.')break;
         i++;
     }
-    if (temp[i] == '\0')
+    if(temp[i]=='\0')
     {
         printf("Syntax error, . expected in From\n");
         return 0;
     }
     return 1;
 }
-int checksyntax(char **mail, char sender[], char *receivers)
+int checksyntax(char**mail,char sender[],char*receivers)
 {
+    /*for(int i=0;i<6;i++)
+    {
+        printf("%s",mail[i]);
+    }*/
     char temp[100];
-    for (int i = 0; i < 100; i++)
-        temp[i] = '\0';
-    int i = 0;
-    while (mail[0][i] != ' ')
+    for(int i=0;i<100;i++)temp[i]='\0';
+    int i=0;
+    while(mail[0][i]!=' '&&mail[0][i]!='\n')
     {
-        temp[i] = mail[0][i];
+        temp[i]=mail[0][i];
         i++;
     }
-    temp[i] = '\0';
-    if (strcmp(temp, "From:") != 0)
+    temp[i]='\0';
+    //printf("%d\n",temp[0]);
+    //printf("%d\n",mail[0][0]);
+    if(strcmp(temp,"From:")!=0)
     {
-        printf("Syntax error, From expected in first line\n");
+        printf("Syntax error,From expected in first line\n");
         return 0;
     }
-    while (mail[0][i] == ' ')
-        i++;
-    int j = 0;
-    for (int k = 0; k < 100; k++)
-        temp[k] = '\0';
-    while (mail[0][i] != '\n')
+    while(mail[0][i]==' ')i++;
+    int j=0;
+    for(int k=0;k<100;k++)temp[k]='\0';
+    while(mail[0][i]!='\n')
     {
-        temp[j] = mail[0][i];
-        i++;
-        j++;
+        temp[j]=mail[0][i];
+        i++;j++;
     }
-    temp[j] = '\0';
-    int flag = checkmailsyntax(temp);
-    if (!flag)
+    temp[j]='\0';
+    int flag=checkmailsyntax(temp);
+    if(!flag)
     {
         return 0;
     }
-    strcpy(sender, temp);
-    i = 0;
-    for (int k = 0; k < 100; k++)
-        temp[k] = '\0';
-    while (mail[1][i] != ' ')
+    strcpy(sender,temp);
+    i=0;
+    for(int k=0;k<100;k++)temp[k]='\0';
+    while(mail[1][i]!=' '&&mail[1][i]!='\n')
     {
-        temp[i] = mail[1][i];
+        temp[i]=mail[1][i];
         i++;
     }
-    temp[i] = '\0';
-    if (strcmp(temp, "To:") != 0)
+    temp[i]='\0';
+    if(strcmp(temp,"To:")!=0)
     {
         printf("Syntax error, To expected in second line\n");
         return 0;
     }
-    while (mail[1][i] == ' ')
-        i++;
-    j = 0;
-    for (int k = 0; k < 100; k++)
-        temp[k] = '\0';
-    while (mail[1][i] != '\n')
+    while(mail[1][i]==' ')i++;
+    j=0;
+    for(int k=0;k<100;k++)temp[k]='\0';
+    while(mail[1][i]!='\n')
     {
-        temp[j] = mail[1][i];
-        i++;
-        j++;
+        temp[j]=mail[1][i];
+        i++;j++;
     }
-    temp[j] = '\0';
-    flag = checkmailsyntax(temp);
-    if (!flag)
+    temp[j]='\0';
+    flag=checkmailsyntax(temp);
+    if(!flag)
     {
         return 0;
     }
-    strcpy(receivers, temp);
-    i = 0;
-    for (int k = 0; k < 100; k++)
-        temp[k] = '\0';
-    while (mail[2][i] != ' ')
+    strcpy(receivers,temp);
+    i=0;
+    for(int k=0;k<100;k++)temp[k]='\0';
+    while(mail[2][i]!=' '&&mail[2][i]!='\n')
     {
-        temp[i] = mail[2][i];
+        temp[i]=mail[2][i];
         i++;
     }
-    temp[i] = '\0';
-    if (strcmp(temp, "Subject:") != 0)
+    temp[i]='\0';
+    if(strcmp(temp,"Subject:")!=0)
     {
         printf("Syntax error, Subject expected in third line\n");
         return 0;
@@ -149,6 +143,7 @@ int checksyntax(char **mail, char sender[], char *receivers)
 char buffer2[1000];
 int curpointer = 0;
 int prevlen = 0;
+char prev=0;
 void receive(int sockfd,char* buffer)
 {
     int i=0;int count=0;
@@ -164,8 +159,11 @@ void receive(int sockfd,char* buffer)
         {
             buffer[i++]=buffer2[curpointer];
             //printf("%d ",buffer2[curpointer]);fflush(stdout);
-            if(buffer2[curpointer]==10)count++;
-            if(buffer2[curpointer]==13)count++;
+            if(buffer2[curpointer]=='\n'&&prev=='\r')
+            {
+                count=2;
+            }
+            prev=buffer2[curpointer];
             //printf("%d=count\n",count);
         }
         if(prevlen==0)break;
@@ -242,33 +240,40 @@ void manage_mail(char *server_IP, int pop3_port, char *username, char *password)
     sprintf(buffer, "RETR %d\r\n", choice);
     send(sockfd, buffer, strlen(buffer), 0);
     int line_no = 0;
-
-    /*int temp = 0;
+    */
+    int line_no = 0;
+    int temp = 0;
     while (temp < mail_count)
     {
         temp++;
+        line_no=0;
+        sprintf(buffer, "RETR %d\r\n", temp);
+        send(sockfd, buffer, strlen(buffer), 0);
+        receive(sockfd, buffer);
         while (1)
         {
-            printf("%d ", (line_no + 1));
+            //printf("%d ", (line_no + 1));
             if (line_no == 0)
             {
                 // remove first 6 characters from the buffer and print
                 receive(sockfd, buffer);
-                for (int i = 6; i < strlen(buffer); i++)
+                for (int i = 6; i < strlen(buffer)-2; i++)
                 {
                     printf("%c", buffer[i]);
                 }
+                printf(" ");
             }
             else if (line_no == 2)
             {
                 // remove first 6 characters from the buffer and print
                 receive(sockfd, buffer);
-                for (int i = 10; i < strlen(buffer); i++)
+                for (int i = 10; i < strlen(buffer)-3; i++)
                 {
                     printf("%c", buffer[i]);
                 }
+                printf(" ");
             }
-            else if (line_no == 4)
+            else if (line_no == 3)
             {
                 receive(sockfd, buffer);
                 for (int i = 8; i < strlen(buffer); i++)
@@ -279,7 +284,7 @@ void manage_mail(char *server_IP, int pop3_port, char *username, char *password)
             else
             {
                 receive(sockfd, buffer);
-                printf("%s", buffer);
+                //printf("%s", buffer);
             }
             line_no++;
             // printf("%s", buffer);
@@ -287,7 +292,7 @@ void manage_mail(char *server_IP, int pop3_port, char *username, char *password)
                 break;
         }
         printf("\n");
-    }*/
+    }
     while(1)
     {
         printf("Enter mail number to see: ");
@@ -311,7 +316,9 @@ void manage_mail(char *server_IP, int pop3_port, char *username, char *password)
             {
                 printf("%d ",buffer[i]);
             }
-            printf("\n");
+            printf("%d\n",strcmp(buffer,".\r\n"));
+            printf("\n\n\n");
+           
             if (strcmp(buffer, ".\r\n") == 0)
                 break;
         }
@@ -378,160 +385,158 @@ int main(int argc, char *argv[])
             printf("1. Send mail\n2. Receive mail\n3. Exit\n");
             printf("Enter option: ");
             scanf("%d", &option);
-            switch (option)
+            if(option==1)
             {
-            case 1:
                 manage_mail(argv[1], pop3_port, username, password);
-                break;
-
-            case 2:
-                int sockfd = socket(AF_INET, SOCK_STREAM, 0);
-                if (sockfd < 0)
+            }
+            else if(option==2)
+            {
+                struct sockaddr_in servaddr;
+                servaddr.sin_family = AF_INET;
+                inet_aton(argv[1], &servaddr.sin_addr);
+                servaddr.sin_port = htons(atoi(argv[2]));
+                int sockfd = socket(AF_INET,SOCK_STREAM,0);
+                if(sockfd<0)
                 {
                     perror("socket: ");
                     exit(0);
-                }
-                if (connect(sockfd, (struct sockaddr *)&servaddr, sizeof(servaddr)) < 0)
+                } 
+                if(connect(sockfd,(struct sockaddr*)&servaddr,sizeof(servaddr))<0)
                 {
                     perror("connect: ");
                     exit(0);
                 }
-                char *mail[100];
-                for (int i = 0; i < 100; i++)
-                    mail[i] = (char *)malloc(100 * sizeof(char));
+                char* mail[100];
+                for(int i=0;i<100;i++)mail[i]=(char*)malloc(100*sizeof(char));
                 printf("Enter mail: ");
-                for (int i = 0; i < 100; i++)
+                fgets(mail[0],100,stdin);
+                for(int i=0;i<100;i++)
                 {
-                    fgets(mail[i], 100, stdin);
-                    if (strcmp(mail[i], ".\n") == 0)
-                        break;
+                    fgets(mail[i],100,stdin);
+                    printf("%d\n",mail[i][0]);
+                    if(strcmp(mail[i],".\n")==0)break;
                 }
                 char sender[100];
                 char receivers[100];
-                int flag = checksyntax(mail, sender, receivers);
-                if (!flag)
+                for(int i=0;i<6;i++)
+                {
+                    printf("%s",mail[i]);
+                }
+                int flag=checksyntax(mail,sender,receivers);
+                if(!flag)
                 {
                     exit(0);
                 }
                 printf("Syntax correct\n");
-                for (int i = 0; i < 100; i++)
+                for(int i=0;i<100;i++)
                 {
-                    int j = 0;
-                    while (j < 100 && mail[i][j] != '\n')
-                        j++;
-                    if (j == 100)
+                    int j=0;
+                    while(j<100&&mail[i][j]!='\n')j++;
+                    if(j==100)
                     {
                         break;
                     }
-                    mail[i][j] = '\r';
-                    mail[i][j + 1] = '\n';
+                    mail[i][j]='\r';
+                    mail[i][j+1]='\n';
                     j++;
                     j++;
-                    while (j < 100)
-                    {
-                        mail[i][j] = '\0';
-                        j++;
-                    }
+                    while(j<100){mail[i][j]='\0';j++;}
                 }
                 char buffer[1000];
-                for (int i = 0; i < 1000; i++)
-                    buffer[i] = '\0';
-                receive(sockfd, buffer);
-                char **result = (char **)malloc(100 * sizeof(char *));
-                for (int i = 0; i < 100; i++)
-                    result[i] = (char *)malloc(100 * sizeof(char));
-                tokenise(buffer, result);
-                if (strcmp(result[0], "220") != 0)
+                for(int i=0;i<1000;i++)buffer[i]='\0';
+                receive(sockfd,buffer);
+                char** result=(char**)malloc(100*sizeof(char*));
+                for(int i=0;i<100;i++)result[i]=(char*)malloc(100*sizeof(char));
+                tokenise(buffer,result);
+                if(strcmp(result[0],"220")!=0)
                 {
                     printf("Error in connection\n");
-                    printf("%s\n", buffer);
+                    printf("%s\n",buffer);
                     exit(0);
                 }
                 printf("Connection established\n");
                 fflush(stdout);
-                for (int i = 0; i < 1000; i++)
-                    buffer[i] = '\0';
+                for(int i=0;i<1000;i++)buffer[i]='\0';
                 char domain[100];
-                for (int i = 1; i < strlen(result[1]) - 1; i++)
-                    domain[i - 1] = result[1][i];
-                domain[strlen(result[1]) - 1] = '\0';
-                sprintf(buffer, "HELO %s\r\n", domain);
-                send(sockfd, buffer, strlen(buffer), 0);
-                for (int i = 0; i < 1000; i++)
-                    buffer[i] = '\0';
-                receive(sockfd, buffer);
+                for(int i=1;i<strlen(result[1])-1;i++)domain[i-1]=result[1][i];
+                domain[strlen(result[1])-1]='\0';
+                sprintf(buffer,"HELO %s\r\n",domain);
+                send(sockfd,buffer,strlen(buffer),0);
+                for(int i=0;i<1000;i++)buffer[i]='\0';
+                receive(sockfd,buffer);
                 printf("Received\n");
                 fflush(stdout);
-                tokenise(buffer, result);
-                if (strcmp(result[0], "250") != 0)
+                tokenise(buffer,result);
+                if(strcmp(result[0],"250")!=0)
                 {
                     printf("Error in HELO\n");
-                    printf("%s\n", result[0]);
+                    printf("%s\n",result[0]);
                     exit(0);
                 }
                 printf("HELO successful\n");
-                for (int i = 0; i < 1000; i++)
-                    buffer[i] = '\0';
-                sprintf(buffer, "MAIL FROM: <%s>\r\n", sender);
-                send(sockfd, buffer, strlen(buffer), 0);
-                receive(sockfd, buffer);
-                printf("Response received: %s\n", buffer);
-                tokenise(buffer, result);
-                for (int i = 0; i < 1000; i++)
-                    buffer[i] = '\0';
-                sprintf(buffer, "RCPT TO: <%s>\r\n", receivers);
-                send(sockfd, buffer, strlen(buffer), 0);
-                receive(sockfd, buffer);
-                printf("Response received: %s", buffer);
-                tokenise(buffer, result);
-                if (strcmp(result[0], "550") == 0)
+                for(int i=0;i<1000;i++)buffer[i]='\0';
+                sprintf(buffer,"MAIL FROM: <%s>\r\n",sender);
+                send(sockfd,buffer,strlen(buffer),0);
+                receive(sockfd,buffer);
+                printf("Response received: %s\n",buffer);
+                tokenise(buffer,result);
+                if(strcmp(result[0],"550")==0)
+                {
+                    printf("User specified in FROM does not exist\n");
+                    close(sockfd);
+                    continue;
+                }
+                for(int i=0;i<1000;i++)buffer[i]='\0';
+                sprintf(buffer,"RCPT TO: <%s>\r\n",receivers);
+                send(sockfd,buffer,strlen(buffer),0);
+                receive(sockfd,buffer);
+                printf("Response received: %s",buffer);
+                tokenise(buffer,result);
+                if(strcmp(result[0],"550")==0)
                 {
                     printf("No such user\n");
                     exit(0);
                 }
-                for (int i = 0; i < 1000; i++)
-                    buffer[i] = '\0';
-                sprintf(buffer, "DATA\r\n");
-                send(sockfd, buffer, strlen(buffer), 0);
-                receive(sockfd, buffer);
-                printf("Response received: %s\n", buffer);
-                tokenise(buffer, result);
-                for (int i = 0; i < 1000; i++)
-                    buffer[i] = '\0';
+                for(int i=0;i<1000;i++)buffer[i]='\0';
+                sprintf(buffer,"DATA\r\n");
+                send(sockfd,buffer,strlen(buffer),0);
+                receive(sockfd,buffer);
+                printf("Response received: %s\n",buffer);
+                tokenise(buffer,result);
+                for(int i=0;i<1000;i++)buffer[i]='\0';
                 // sprintf(buffer,"Subject: Test\r\n\r\nHello\r\n.\r\n");
                 // send(sockfd,buffer,strlen(buffer),0);
                 // for(int i=0;i<1000;i++)buffer[i]='\0';
                 // sprintf(buffer,".\r\n");
                 // send(sockfd,buffer,strlen(buffer),0);
                 // receive(sockfd,buffer);
-                for (int i = 2; i < 100; i++)
+                for(int i=2;i<100;i++)
                 {
-                    send(sockfd, mail[i], strlen(mail[i]), 0);
-                    // for(int k=0;k<strlen(mail[i]);k++)printf("%d ",mail[i][k]);
-                    // printf("\n");
-                    if (strcmp(mail[i], ".\r\n") == 0)
-                        break;
-                    // printf("%d\n",i);
+                    send(sockfd,mail[i],strlen(mail[i]),0);
+                    //for(int k=0;k<strlen(mail[i]);k++)printf("%d ",mail[i][k]);
+                    //printf("\n");
+                    if(strcmp(mail[i],".\r\n")==0)break;
+                    //printf("%d\n",i);
                 }
-                // printf("Hello\n");
-                receive(sockfd, buffer);
-                printf("Response received: %s\n", buffer);
-                for (int i = 0; i < 1000; i++)
-                    buffer[i] = '\0';
-                sprintf(buffer, "QUIT\r\n");
-                send(sockfd, buffer, strlen(buffer), 0);
-                receive(sockfd, buffer);
-                printf("Response received: %s\n", buffer);
-                tokenise(buffer, result);
-                // for(int i=0;i<4;i++)printf("%s\n",result[i]);
+                //printf("Hello\n");
+                receive(sockfd,buffer);
+                printf("Response received: %s\n",buffer);
+                for(int i=0;i<1000;i++)buffer[i]='\0';
+                sprintf(buffer,"QUIT\r\n");
+                send(sockfd,buffer,strlen(buffer),0);
+                receive(sockfd,buffer);
+                printf("Response received: %s\n",buffer);
+                tokenise(buffer,result);
+                //for(int i=0;i<4;i++)printf("%s\n",result[i]);
                 fflush(stdout);
-                break;
-            case 3:
+            }
+            else if(option==3)
+            {
                 exit(0);
-                break;
-            default:
+            }
+            else
+            {
                 printf("Invalid option\n");
-                break;
             }
         }
     }

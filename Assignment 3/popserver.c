@@ -167,7 +167,7 @@ int countmail(char* filepath,int* num)
     }
     fclose(f);
     *num=size;
-    return count;
+    return count-1;
 }
 int stat(char*filepath,int* num,int* delete)
 {
@@ -202,7 +202,7 @@ int stat(char*filepath,int* num,int* delete)
     }
     fclose(f);
     *num=size;
-    return count;
+    return count-1;
 
 }
 void list(char* filepath,int* maillen,int * delete)
@@ -481,6 +481,7 @@ int main(int argc, char* argv[])
                     }
                     list(filepath,maillen,delete);
                     int index=atoi(result[1]);
+                    for(int i=0;i<count;i++)printf("%d ",delete[i]);
                     if(index>count)
                     {
                         sprintf(buffer,"-ERR No such message, only %d messages in maildrop\r\n",count);
