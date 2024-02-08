@@ -213,7 +213,10 @@ void manage_mail(char *server_IP, int pop3_port, char *username, char *password)
     send(sockfd, buffer, strlen(buffer), 0);
     receive(sockfd, buffer);
     printf("%s\n", buffer);
-    if (strcmp(buffer, "+OK\r\n") != 0)
+    char* result[100];
+    for(int i=0;i<100;i++)result[i]=(char*)malloc(100*sizeof(char));
+    tokenise(buffer,result);
+    if (strcmp(result[0], "+OK") != 0)
     {
         printf("Error in username\n");
         exit(0);
@@ -222,7 +225,8 @@ void manage_mail(char *server_IP, int pop3_port, char *username, char *password)
     send(sockfd, buffer, strlen(buffer), 0);
     receive(sockfd, buffer);
     printf("%s\n", buffer);
-    if (strcmp(buffer, "+OK\r\n") != 0)
+    tokenise(buffer,result);
+    if (strcmp(result[0], "+OK") != 0)
     {
         printf("Error in password\n");
         exit(0);
@@ -231,11 +235,14 @@ void manage_mail(char *server_IP, int pop3_port, char *username, char *password)
 
     int mail_count;
     int total_size;
+    sprintf(buffer, "LIST\r\n");
+    send(sockfd, buffer, strlen(buffer), 0);
+    receive(sockfd, buffer);
     sscanf(buffer, "+OK %d %d", &mail_count, &total_size);
     printf("Total mail count: %d\n", mail_count);
 
     // The client must now request to see the contents of a particular mail using the RETR command
-    printf("Enter mail no. to see (-1 to quit): ");
+    /*printf("Enter mail no. to see (-1 to quit): ");
     int choice;
     scanf("%d", &choice);
     if (choice == -1)
@@ -244,7 +251,7 @@ void manage_mail(char *server_IP, int pop3_port, char *username, char *password)
     send(sockfd, buffer, strlen(buffer), 0);
     int line_no = 0;
 
-    int temp = 0;
+    /*int temp = 0;
     while (temp < mail_count)
     {
         temp++;
@@ -288,10 +295,11 @@ void manage_mail(char *server_IP, int pop3_port, char *username, char *password)
                 break;
         }
         printf("\n");
-    }
+    }*/
     while(1)
     {
         printf("Enter mail number to see: ");
+        int choice;
         scanf("%d", &choice);
         if (choice == -1)
             break;
@@ -355,7 +363,7 @@ int main(int argc, char *argv[])
         inet_aton(argv[1], &servaddr.sin_addr);
 
         servaddr.sin_port = htons(atoi(argv[2]));
-        int sockfd = socket(AF_INET, SOCK_STREAM, 0);
+        //int sockfd = socket(AF_INET, SOCK_STREAM, 0);
 
         int pop3_port = atoi(argv[3]);
 
@@ -375,10 +383,11 @@ int main(int argc, char *argv[])
             switch (option)
             {
             case 1:
-                manage_mail(sockfd, pop3_port, username, password);
+                manage_mail(argv[1], pop3_port, username, password);
                 break;
 
             case 2:
+                int sockfd = socket(AF_INET, SOCK_STREAM, 0);
                 if (sockfd < 0)
                 {
                     perror("socket: ");
