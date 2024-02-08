@@ -198,7 +198,8 @@ void manage_mail(char *server_IP, int pop3_port, char *username, char *password)
         printf("Error in connection\n");
         exit(0);
     }
-    // THe client must now identify and authenticate itself to the server using the USER and PASS commands
+    // The client must now identify and authenticate itself to the server using the USER and PASS commands
+
     sprintf(buffer, "USER %s\r\n", username);
     send(sockfd, buffer, strlen(buffer), 0);
     receive(sockfd, buffer);
@@ -211,6 +212,7 @@ void manage_mail(char *server_IP, int pop3_port, char *username, char *password)
         printf("Error in username\n");
         exit(0);
     }
+
     sprintf(buffer, "PASS %s\r\n", password);
     send(sockfd, buffer, strlen(buffer), 0);
     receive(sockfd, buffer);
@@ -231,16 +233,6 @@ void manage_mail(char *server_IP, int pop3_port, char *username, char *password)
     sscanf(buffer, "+OK %d %d", &mail_count, &total_size);
     printf("Total mail count: %d\n", mail_count);
 
-    // The client must now request to see the contents of a particular mail using the RETR command
-    /*printf("Enter mail no. to see (-1 to quit): ");
-    int choice;
-    scanf("%d", &choice);
-    if (choice == -1)
-        return;
-    sprintf(buffer, "RETR %d\r\n", choice);
-    send(sockfd, buffer, strlen(buffer), 0);
-    int line_no = 0;
-    */
     int line_no = 0;
     int temp = 0;
     while (temp < mail_count)
@@ -256,7 +248,6 @@ void manage_mail(char *server_IP, int pop3_port, char *username, char *password)
             printf("%d ", (line_no + 1));
             if (line_no == 0)
             {
-                // remove first 6 characters from the buffer and print
                 receive(sockfd, buffer);
                 for (int i = 6; i < strlen(buffer); i++)
                 {
@@ -266,7 +257,6 @@ void manage_mail(char *server_IP, int pop3_port, char *username, char *password)
             }
             else if (line_no == 2)
             {
-                // remove first 6 characters from the buffer and print
                 receive(sockfd, buffer);
                 for (int i = 10; i < strlen(buffer); i++)
                 {
@@ -288,7 +278,6 @@ void manage_mail(char *server_IP, int pop3_port, char *username, char *password)
                 printf("%s", buffer);
             }
             line_no++;
-            // printf("%s", buffer);
             if (strcmp(buffer, ".\r\n") == 0)
                 break;
         }
@@ -308,17 +297,26 @@ void manage_mail(char *server_IP, int pop3_port, char *username, char *password)
         }
         sprintf(buffer, "RETR %d\r\n", choice);
         send(sockfd, buffer, strlen(buffer), 0);
+        
+        
         //printf("Hello\n");
         while(1)
         {
+            
             receive(sockfd, buffer);
+            tokenise(buffer,result);
+            if(strcmp(result[0],"-ERR")==0)
+            {
+                printf("Mail deleted\n");
+                break;
+            }
             printf("%s", buffer);
             for(int i=0;i<strlen(buffer);i++)
             {
                 printf("%d ",buffer[i]);
             }
             printf("%d\n",strcmp(buffer,".\r\n"));
-            printf("\n\n\n");
+            printf("\n");
            
             if (strcmp(buffer, ".\r\n") == 0)
                 break;
@@ -340,18 +338,20 @@ void manage_mail(char *server_IP, int pop3_port, char *username, char *password)
     sprintf(buffer, "QUIT\r\n");
     send(sockfd, buffer, strlen(buffer), 0);
     receive(sockfd, buffer);
-    if(strcmp(buffer,"+OK\r\n")!=0)
-    {
-        printf("Marked messages deleted\n");
-        exit(0);
-    }
-    receive(sockfd, buffer);
-    if(strcmp(buffer,"goodbye\r\n")!=0)
+
+    if(strcmp(buffer,"goodbye\r\n")==0)
     {
         printf("Goodbye\n");
+        clock(sockfd);
+        return;
+    }
+    else
+    {
+        printf("Error in QUIT\n");
+        close(sockfd);
         exit(0);
     }
-    close(sockfd);
+    
 }
 
 int main(int argc, char *argv[])
@@ -383,7 +383,7 @@ int main(int argc, char *argv[])
         {
             int option;
 
-            printf("1. Send mail\n2. Receive mail\n3. Exit\n");
+            printf("1. Manage mail\n2. Send mail\n3. Quit\n");
             printf("Enter option: ");
             scanf("%d", &option);
             if(option==1)
