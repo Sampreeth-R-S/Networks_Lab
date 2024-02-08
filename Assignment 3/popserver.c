@@ -71,9 +71,9 @@ int checkpass(char* user,char* pass)
             i++;
         }
         username[i]='\0';
-        for(int i=0;i<strlen(username);i++)printf("%d ",username[i]);
-        printf("\n");
-        printf("%s %d\n",username,strcmp(username,user));
+        // for(int i=0;i<strlen(username);i++)printf("%d ",username[i]);
+        // printf("\n");
+        // printf("%s %d\n",username,strcmp(username,user));
         if(strcmp(username,user)==0)
         {
             while(buffer[i]==' ')i++;
@@ -99,7 +99,7 @@ int checkpass(char* user,char* pass)
                 fclose(f);
                 return 0;
             }
-            printf("%d\n",count++);
+            // printf("%d\n",count++);
             fflush(stdout);
         }
 
@@ -338,11 +338,11 @@ int main(int argc,char*argv[])
         }
         fclose(fp);
         //count--;
-        printf("Count=%d\n",count);
+        // printf("Count=%d\n",count);
         fflush(stdout);
         sprintf(buffer,"+OK %s's mailbox has %d messages (%d octets)\r\n",user,count,len);
         send(newsockfd,buffer,strlen(buffer),0);
-        printf("Sent\n");
+        // printf("Sent\n");
         for(int i=0;i<1000;i++)
         {
             buffer[i]='\0';
@@ -367,7 +367,7 @@ int main(int argc,char*argv[])
             receive(newsockfd,buffer);
             tokenise(buffer,result);
             for(int i=0;i<strlen(result[0]);i++)result[0][i]=toupper(result[0][i]);
-            printf("%s\n",result[0]);
+            // printf("%s\n",result[0]);
             if(strcmp("RETR",result[0])==0)
             {
                 FILE* fp=fopen(filepath,"r");
@@ -379,10 +379,10 @@ int main(int argc,char*argv[])
                     continue;
                 }
                 int index=atoi(result[1])-1;
-                for(int i=0;i<count;i++)
-                {
-                    printf("%d ",delete[i]);
-                }
+                // for(int i=0;i<count;i++)
+                // {
+                //     // printf("%d ",delete[i]);
+                // }
                 fflush(stdout);
                 if(index>count||index<0)
                 {

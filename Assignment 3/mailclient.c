@@ -301,6 +301,7 @@ void manage_mail(char *server_IP, int pop3_port, char *username, char *password)
         
         
         //printf("Hello\n");
+        int flag=0;
         while(1)
         {
             
@@ -309,6 +310,7 @@ void manage_mail(char *server_IP, int pop3_port, char *username, char *password)
             if(strcmp(result[0],"-ERR")==0)
             {
                 printf("Mail deleted\n");
+                flag=1;
                 break;
             }
             if(strcmp(result[0],"+OK")==0)
@@ -326,6 +328,7 @@ void manage_mail(char *server_IP, int pop3_port, char *username, char *password)
             if (strcmp(buffer, ".\r\n") == 0)
                 break;
         }
+        if(flag)continue;
 
         printf("Enter 'd' to delete this mail, any other key to continue: ");
         char ch;
