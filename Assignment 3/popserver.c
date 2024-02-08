@@ -56,6 +56,7 @@ int checkpass(char* user,char* pass)
         printf("Error opening file\n");
         exit(0);
     }
+    int count=0;
     while(!feof(f))
     {
         char buffer[1000];
@@ -88,14 +89,21 @@ int checkpass(char* user,char* pass)
                 fclose(f);
                 return 0;
             }
+            printf("%d\n",count++);
+            fflush(stdout);
         }
+
     }
     fclose(f);
     return 0;
-
 }
 void tokenise(char* buffer,char** result)
 {
+    
+    for(int i=0;i<100;i++)
+    {
+        for(int j=0;j<100;j++)result[i][j]='\0';
+    }
     int i=0;
     int j=0,k=0;
     while(buffer[i]!='\r')
@@ -117,9 +125,11 @@ void tokenise(char* buffer,char** result)
     }
     result[k][j]='\0';
 }
+
 char buffer2[1000];
-int curpointer=0;
-int prevlen=0;
+int curpointer = 0;
+int prevlen = 0;
+char prev=0;
 void receive(int sockfd,char* buffer)
 {
     int i=0;int count=0;
@@ -135,8 +145,11 @@ void receive(int sockfd,char* buffer)
         {
             buffer[i++]=buffer2[curpointer];
             //printf("%d ",buffer2[curpointer]);fflush(stdout);
-            if(buffer2[curpointer]==10)count++;
-            if(buffer2[curpointer]==13)count++;
+            if(buffer2[curpointer]=='\n'&&prev=='\r')
+            {
+                count=2;
+            }
+            prev=buffer2[curpointer];
             //printf("%d=count\n",count);
         }
         if(prevlen==0)break;
@@ -144,98 +157,12 @@ void receive(int sockfd,char* buffer)
     //printf("Receive returned\n");
     //fflush(stdout);
 }
-int countmail(char* filepath,int* num)
-{
-    FILE* f=fopen(filepath,"r");
-    if(f==NULL)
-    {
-        printf("Error opening file\n");
-        exit(0);
-    }
-    int count=0;
-    int size=0;
-    while(!feof(f))
-    {
-        char buffer[1000];
-        fgets(buffer,1000,f);
-        size+=strlen(buffer)-1;
-        if(strcmp(buffer,".\r\n")==0)
-        {
-            count++;
-            size-=strlen(buffer)-1;
-        }
-    }
-    fclose(f);
-    *num=size;
-    return count-1;
-}
-int stat(char*filepath,int* num,int* delete)
-{
-    FILE* f=fopen(filepath,"r");
-    if(f==NULL)
-    {
-        printf("Error opening file\n");
-        exit(0);
-    }
-    int count=0;
-    int size=0;
-    while(!feof(f))
-    {
-        if(delete[count]==1)
-        {
-            char buffer[1000];
-            fgets(buffer,1000,f);
-            if(strcmp(buffer,".\r\n")==0)
-            {
-                count++;
-            }
-            continue;
-        }
-        char buffer[1000];
-        fgets(buffer,1000,f);
-        size+=strlen(buffer)-1;
-        if(strcmp(buffer,".\r\n")==0)
-        {
-            count++;
-            size-=strlen(buffer)-1;
-        }
-    }
-    fclose(f);
-    *num=size;
-    return count-1;
 
-}
-void list(char* filepath,int* maillen,int * delete)
-{
-    FILE* f=fopen(filepath,"r");
-    if(f==NULL)
-    {
-        printf("Error opening file\n");
-        exit(0);
-    }
-    int count=0;
-    int size=0;
-    int index=0;
-    while(!feof(f))
-    {
-        char buffer[1000];
-        fgets(buffer,1000,f);
-        size+=strlen(buffer)-1;
-        if(strcmp(buffer,".\r\n")==0)
-        {
-            count++;
-            size-=strlen(buffer)-1;
-            maillen[index++]=size;
-        }
-    }
-    fclose(f);
-    
-}
-int main(int argc, char* argv[])
+int main(int argc,char*argv[])
 {
     if(argc!=2)
     {
-        printf("Usage: ./smtpserver <port>\n");
+        printf("Usage: %s <port>\n",argv[0]);
         exit(0);
     }
     int sockfd;
@@ -264,19 +191,63 @@ int main(int argc, char* argv[])
         if(newsockfd<0)
         {
             perror("accept: ");
-            exit(0);
         }
-        if(fork()==0)
+        int pid=fork();
+        if(pid)
         {
-            close(sockfd);
-            char buffer[1000];
-            char* result[100];
-            for(int i=0;i<100;i++)
+            close(newsockfd);
+            continue;
+        }
+        close(sockfd);
+        char buffer[1000];
+        for(int i=0;i<1000;i++)
+        {
+            buffer[i]='\0';
+        }
+        sprintf(buffer,"+OK POP3 server ready\r\n");
+        send(newsockfd,buffer,strlen(buffer),0);
+        for(int i=0;i<1000;i++)
+        {
+            buffer[i]='\0';
+        }
+        receive(newsockfd,buffer);
+        char* result[100];
+        for(int i=0;i<100;i++)
+        {
+            result[i]=(char*)malloc(100*sizeof(char));
+        }
+        tokenise(buffer,result);
+        while(strcmp(result[0],"USER")!=0)
+        {
+            if(strcmp(result[0],"QUIT")==0)
             {
-                result[i]=(char*)malloc(100*sizeof(char));
+                sprintf(buffer,"+OK POP3 server signing off\r\n");
+                send(newsockfd,buffer,strlen(buffer),0);
+                close(newsockfd);
+                exit(0);
             }
-            sprintf(buffer,"+OK POP3 server ready\r\n");
+            sprintf(buffer,"-ERR Invalid command\r\n");
             send(newsockfd,buffer,strlen(buffer),0);
+            for(int i=0;i<1000;i++)
+            {
+                buffer[i]='\0';
+            }
+            receive(newsockfd,buffer);
+            tokenise(buffer,result);
+        }
+        int flag=checkuser(result[1]);
+        while(!flag)
+        {
+            for(int i=0;i<1000;i++)
+            {
+                buffer[i]='\0';
+            }
+            sprintf(buffer,"-ERR Invalid username\r\n");
+            send(newsockfd,buffer,strlen(buffer),0);
+            for(int i=0;i<1000;i++)
+            {
+                buffer[i]='\0';
+            }
             receive(newsockfd,buffer);
             tokenise(buffer,result);
             while(strcmp(result[0],"USER")!=0)
@@ -290,305 +261,235 @@ int main(int argc, char* argv[])
                 }
                 sprintf(buffer,"-ERR Invalid command\r\n");
                 send(newsockfd,buffer,strlen(buffer),0);
+                for(int i=0;i<1000;i++)
+                {
+                    buffer[i]='\0';
+                }
                 receive(newsockfd,buffer);
                 tokenise(buffer,result);
             }
-            int i=0;
-            char temp[1000];
-            while(buffer[i]!=' ')
-            {
-                i++;
-            }
-            while(buffer[i]==' ')i++;
-            int j=0;
-            while(buffer[i]!='\r')
-            {
-                temp[j++]=buffer[i++];
-            }
-            temp[j]='\0';
-            while(checkuser(temp)==0)
-            {
-                sprintf(buffer,"-ERR Invalid user\r\n");
-                send(newsockfd,buffer,strlen(buffer),0);
-                receive(newsockfd,buffer);
-                tokenise(buffer,result);
-                while(strcmp(result[0],"USER")!=0)
-                {
-                    if(strcmp(result[0],"QUIT")==0)
-                    {
-                        sprintf(buffer,"+OK POP3 server signing off\r\n");
-                        send(newsockfd,buffer,strlen(buffer),0);
-                        close(newsockfd);
-                        exit(0);
-                    }
-                    sprintf(buffer,"-ERR Invalid command\r\n");
-                    send(newsockfd,buffer,strlen(buffer),0);
-                    receive(newsockfd,buffer);
-                    tokenise(buffer,result);
-                }
-                i=0;
-                while(buffer[i]!=' ')
-                {
-                    i++;
-                }
-                while(buffer[i]==' ')i++;
-                j=0;
-                while(buffer[i]!='\r')
-                {
-                    temp[j++]=buffer[i++];
-                }
-                temp[j]='\0';
-            }
-            char user[100];
-            strcpy(user,temp);
-            sprintf(buffer,"+OK User accepted\r\n");
+            flag=checkuser(result[1]);
+        }
+        for(int i=0;i<1000;i++)
+        {
+            buffer[i]='\0';
+        }
+        char user[1000];
+        strcpy(user,result[1]);
+        sprintf(buffer,"+OK User accepted\r\n");
+        send(newsockfd,buffer,strlen(buffer),0);
+        for(int i=0;i<1000;i++)
+        {
+            buffer[i]='\0';
+        }
+        receive(newsockfd,buffer);
+        tokenise(buffer,result);
+        if(strcmp(result[0],"PASS")!=0)
+        {
+            sprintf(buffer,"-ERR Invalid command\r\n");
             send(newsockfd,buffer,strlen(buffer),0);
+            close(newsockfd);
+            exit(0);
+        }
+        flag=checkpass(user,result[1]);
+
+        if(!flag)
+        {
+            sprintf(buffer,"-ERR Invalid password\r\n");
+            send(newsockfd,buffer,strlen(buffer),0);
+            sprintf(buffer,"-ERR Authentication failed, server quitting\r\n");
+            close(newsockfd);
+            exit(0);
+        }
+        sprintf(buffer,"+OK Mailbox open\r\n");
+        int count,len;
+        count=0;
+        len=0;
+        char filepath[1000];
+        strcpy(filepath,user);
+        strcat(filepath,"/mymailbox");
+        FILE* fp=fopen(filepath,"r");
+        if(fp==NULL)
+        {
+            sprintf(buffer,"-OK empty mailbox\r\n");
+            send(newsockfd,buffer,strlen(buffer),0);
+            sprintf(buffer,"+OK POP3 server signing off\r\n");
+            send(newsockfd,buffer,strlen(buffer),0);
+            close(newsockfd);
+            exit(0);
+        }
+        while(!feof(fp))
+        {
+            char temp[1000];
+            fgets(temp,1000,fp);
+            len+=strlen(temp)-1;
+            if(strcmp(temp,".\r\n")==0)count++;
+        }
+        fclose(fp);
+        count--;
+        printf("Count=%d\n",count);
+        fflush(stdout);
+        sprintf(buffer,"+OK %s's mailbox has %d messages (%d octets)\r\n",user,count,len);
+        send(newsockfd,buffer,strlen(buffer),0);
+        printf("Sent\n");
+        for(int i=0;i<1000;i++)
+        {
+            buffer[i]='\0';
+        }
+        int delete[count];
+        int maillen[count+10];
+        for(int i=0;i<count;i++)maillen[i]=0;
+        for(int i=0;i<count;i++)delete[i]=0;
+        int var2=0;
+        fp=fopen(filepath,"r");
+        while(!feof(fp))
+        {
+            char temp[1000];
+            fgets(temp,1000,fp);
+            maillen[var2]+=strlen(temp)-1;
+            if(strcmp(temp,".\r\n")==0)var2++;
+        }
+        fclose(fp);
+        while(1)
+        {
             receive(newsockfd,buffer);
             tokenise(buffer,result);
-            if(strcmp(result[0],"PASS")!=0)
+            for(int i=0;i<strlen(result[0]);i++)result[0][i]=toupper(result[0][i]);
+            printf("%s\n",result[0]);
+            if(strcmp("RETR",result[0])==0)
             {
-                sprintf(buffer,"-ERR Invalid command\r\n");
-                send(newsockfd,buffer,strlen(buffer),0);
-                sprintf(buffer,"-ERR Authorisation failed\r\n");
-                send(newsockfd,buffer,strlen(buffer),0);
-                sprintf(buffer,"-ERR POP3 server signing off\r\n");
-                send(newsockfd,buffer,strlen(buffer),0);
-                close(newsockfd);
-                exit(0);
+                FILE* fp=fopen(filepath,"r");
+                int cur=0;
+                if(result[1][0]=='\0')
+                {
+                    sprintf(buffer,"-ERR Invalid command\r\n");
+                    send(newsockfd,buffer,strlen(buffer),0);
+                    continue;
+                }
+                int index=atoi(result[1])-1;
+                for(int i=0;i<count;i++)
+                {
+                    printf("%d ",delete[i]);
+                }
+                fflush(stdout);
+                if(index>count||index<0)
+                {
+                    sprintf(buffer,"-ERR Invalid message number\r\n");
+                    send(newsockfd,buffer,strlen(buffer),0);
+                    continue;
+                }
+                if(delete[index])
+                {
+                    sprintf(buffer,"-ERR Message deleted\r\n");
+                    printf("Message deleted\n");
+                    send(newsockfd,buffer,strlen(buffer),0);
+                    continue;
+                }
+                int size=0;
+                while(!feof(fp))
+                {
+                    char temp[1000];
+                    fgets(temp,1000,fp);
+                    if(cur==index)
+                    {
+                        send(newsockfd,temp,strlen(temp),0);
+                    }
+                    if(strcmp(temp,".\r\n")==0)cur++;
+                }
             }
-            i=0;
-            while(buffer[i]!=' ')
+            else if(strcmp("STAT",result[0])==0)
             {
-                i++;
+                FILE* fp=fopen(filepath,"r");
+                int tempcount=0;
+                int templen=0;
+                while(!feof(fp))
+                {
+                    char temp[1000];
+                    fgets(temp,1000,fp);
+                    if(!delete[tempcount])
+                    templen+=strlen(temp)-1;
+                    if(strcmp(temp,".\r\n")==0)tempcount++;
+                }
+                int delcount=0;
+                for(int i=0;i<count;i++)
+                {
+                    if(delete[i])delcount++;
+                }
+                sprintf(buffer,"+OK %d %d\r\n",count-delcount,templen);
+                send(newsockfd,buffer,strlen(buffer),0);
             }
-            while(buffer[i]==' ')i++;
-            j=0;
-            while(buffer[i]!='\r')
+            else if(strcmp("QUIT",result[0])==0)
             {
-                temp[j++]=buffer[i++];
-            }
-            temp[j]='\0';
-            if(checkpass(user,temp)==0)
-            {
-                sprintf(buffer,"-ERR Invalid password\r\n");
-                send(newsockfd,buffer,strlen(buffer),0);
-                sprintf(buffer,"-ERR Authorisation failed\r\n");
-                send(newsockfd,buffer,strlen(buffer),0);
-                sprintf(buffer,"-ERR POP3 server signing off\r\n");
-                send(newsockfd,buffer,strlen(buffer),0);
-                close(newsockfd);
-                exit(0);
-            }
-            char filepath[1000];
-            strcpy(filepath,user);
-            strcat(filepath,"/mymailbox");
-            FILE* f=fopen(filepath,"r");
-            if(f==NULL)
-            {
-                sprintf(buffer,"+OK Mailbox is empty\r\n");
-                send(newsockfd,buffer,strlen(buffer),0);
                 sprintf(buffer,"+OK POP3 server signing off\r\n");
                 send(newsockfd,buffer,strlen(buffer),0);
                 close(newsockfd);
                 exit(0);
             }
-            int num;
-            int count=countmail(filepath,&num);
-            int delete[count];
-            for(int i=0;i<count;i++)
+            else if(strcmp("LIST",result[0])==0)
             {
-                delete[i]=0;
-            }
-            
-            sprintf(buffer,"+OK %s's mailbox has %d messages (%d octets)\r\n",user,count,num);
-            send(newsockfd,buffer,strlen(buffer),0);
-            while(1)
-            {
-                receive(newsockfd,buffer);
-                tokenise(buffer,result);
-                printf("%s\n",result[0]);
-                int i=0;
-                while(result[0][i])
+                if(result[1][0]=='\0')
                 {
-                    result[0][i]=toupper(result[0][i]);
-                    i++;
-                }
-                if(strcmp("STAT",result[0])==0)
-                {
-                    //count=stat(filepath,&num,delete);
-                    int tempcount,tempnum;
-                    tempcount=stat(filepath,&tempnum,delete);
-                    sprintf(buffer,"+OK %d %d\r\n",tempcount,tempnum);
+                    int delcount=0;
+                    int templen=0;
+                    for(int i=0;i<count;i++)if(delete[i]){
+                        delcount++;
+                        templen+=maillen[i];
+                    }
+                    sprintf(buffer,"+OK %d messages (%d octets)\r\n",count-delcount,len-templen);
                     send(newsockfd,buffer,strlen(buffer),0);
-                }
-                else if(strcmp("LIST",result[0])==0)
-                {
-                    int tempnum;
-                    int tempcount=stat(filepath,&tempnum,delete);
-                    int maillen[count];
                     for(int i=0;i<count;i++)
                     {
-                        maillen[i]=0;
-                    }
-                    list(filepath,maillen,delete);
-                    if(result[1][0]=='\0')
-                    {
-                        sprintf(buffer,"+OK %d messages (%d octets)\r\n",tempcount,tempnum);
-                        send(newsockfd,buffer,strlen(buffer),0);
-                        int index=0;
-                        for(int i=0;i<count;i++)
+                        if(!delete[i])
                         {
-                            if(delete[i]==1)continue;
-                            sprintf(buffer,"%d  %d\r\n",++index,maillen[i]);
+                            sprintf(buffer,"%d %d\r\n",i+1,maillen[i]);
                             send(newsockfd,buffer,strlen(buffer),0);
                         }
-                        sprintf(buffer,".\r\n");
-                        send(newsockfd,buffer,strlen(buffer),0);
                     }
-                    else{
-                        int index=atoi(result[1]);
-                        if(index>count)
-                        {
-                            sprintf(buffer,"-ERR No such message, only %d messages in maildrop\r\n",count);
-                            send(newsockfd,buffer,strlen(buffer),0);
-                        }
-                        else if(delete[index-1]==1)
-                        {
-                            sprintf(buffer,"-ERR Message %d has been deleted\r\n",index);
-                            send(newsockfd,buffer,strlen(buffer),0);
-                        }
-                        else{
-                            sprintf(buffer,"+OK %d %d\r\n",index,maillen[index-1]);
-                            send(newsockfd,buffer,strlen(buffer),0);
-                        }
-                    
-                    }
-                }
-                else if(strcmp("RETR",result[0])==0)
-                {
-                    if(result[1][0]=='\0')
-                    {
-                        sprintf(buffer,"-ERR Invalid command\r\n");
-                        send(newsockfd,buffer,strlen(buffer),0);
-                        continue;
-                    }
-                    printf("Inside Retr\n");
-                    //count=stat(filepath,&num,delete);
-                    int maillen[count];
-                    for(int i=0;i<count;i++)
-                    {
-                        maillen[i]=0;
-                    }
-                    list(filepath,maillen,delete);
-                    int index=atoi(result[1]);
-                    for(int i=0;i<count;i++)printf("%d ",delete[i]);
-                    if(index>count)
-                    {
-                        sprintf(buffer,"-ERR No such message, only %d messages in maildrop\r\n",count);
-                        send(newsockfd,buffer,strlen(buffer),0);
-                    }
-                    else if(delete[index-1])
-                    {
-                        sprintf(buffer,"-ERR Message %d has been deleted\r\n",index);
-                        send(newsockfd,buffer,strlen(buffer),0);
-                    }
-                    else{
-                        sprintf(buffer,"+OK %d octets\r\n",maillen[index-1]);
-                        send(newsockfd,buffer,strlen(buffer),0);
-                        FILE* f=fopen(filepath,"r");
-                        if(f==NULL)
-                        {
-                            printf("Error opening file\n");
-                            exit(0);
-                        }
-                        int cur=1;
-                        while(!feof(f))
-                        {
-                            if(cur>index)
-                            {
-                                break;
-                            }
-                            char temp[1000];
-                            fgets(temp,1000,f);
-                            if(cur==index)
-                            {
-                                send(newsockfd,temp,strlen(temp),0);
-                                printf("Sending %s\n",temp);
-                                for(int i=0;i<strlen(temp);i++)printf("%d ",temp[i]);
-                                printf("\n");
-                            }
-                            if(strcmp(temp,".\r\n")==0)
-                            {
-                                cur++;
-                            }
 
-                        }
-                    
-                    }
                 }
-                else if(strcmp(result[0],"DELE")==0)
-                {
-                    if(result[1][0]=='\0')
-                    {
-                        sprintf(buffer,"-ERR Invalid command\r\n");
-                        send(newsockfd,buffer,strlen(buffer),0);
-                        continue;
-                    }
-                    //count=stat(filepath,&num,delete);
-                    int maillen[count];
-                    for(int i=0;i<count;i++)
-                    {
-                        maillen[i]=0;
-                    }
-                    list(filepath,maillen,delete);
-                    int index=atoi(result[1]);
-                    if(index>count)
-                    {
-                        sprintf(buffer,"-ERR No such message, only %d messages in maildrop\r\n",count);
-                        send(newsockfd,buffer,strlen(buffer),0);
-                    }
-                    else if(delete[index-1])
-                    {
-                        sprintf(buffer,"-ERR Message %d has been deleted\r\n",index);
-                        send(newsockfd,buffer,strlen(buffer),0);
-                    }
-                    else{
-                        delete[index-1]=1;
-                        sprintf(buffer,"+OK Message %d deleted\r\n",index);
-                        send(newsockfd,buffer,strlen(buffer),0);
-                    }
-                }
-                else if(strcmp(result[0],"RSET")==0)
-                {
-                    for(int i=0;i<count;i++)
-                    {
-                        delete[i]=0;
-                    }
-                    //count=stat(filepath,&num,delete);
-                    sprintf(buffer,"+OK Maildrop has %d messages (%d octets)\r\n",count,num);
-                    send(newsockfd,buffer,strlen(buffer),0);
-                }
-                else if(strcmp(result[0],"QUIT")==0)
-                {
-                    sprintf(buffer,"+OK POP3 server signing off\r\n");
-                    send(newsockfd,buffer,strlen(buffer),0);
-                    close(newsockfd);
-                    //deletemail(filepath,delete);
-                    break;
-                }
-                else
+            }
+            else if(strcmp("DELE",result[0])==0)
+            {
+                if(result[1][0]=='\0')
                 {
                     sprintf(buffer,"-ERR Invalid command\r\n");
                     send(newsockfd,buffer,strlen(buffer),0);
+                    continue;
                 }
-                
+                int index=atoi(result[1])-1;
+                if(index>count||index<0)
+                {
+                    sprintf(buffer,"-ERR Invalid message number\r\n");
+                    send(newsockfd,buffer,strlen(buffer),0);
+                    continue;
+                }
+                if(delete[index])
+                {
+                    sprintf(buffer,"-ERR Message already deleted\r\n");
+                    send(newsockfd,buffer,strlen(buffer),0);
+                    continue;
+                }
+                delete[index]=1;
+                sprintf(buffer,"+OK Message %d deleted\r\n",index+1);
+                send(newsockfd,buffer,strlen(buffer),0);
             }
-            exit(0);
+            else if(strcmp("RSET",result[0])==0)
+            {
+                for(int i=0;i<count;i++)delete[i]=0;
+                sprintf(buffer,"+OK Mailbox has %d messages\r\n",count);
+                send(newsockfd,buffer,strlen(buffer),0);
+            }
+            else
+            {
+                sprintf(buffer,"-ERR Invalid command\r\n");
+                send(newsockfd,buffer,strlen(buffer),0);
+            }
+        }
 
-        }
-        else{
-            close(newsockfd);
-            continue;
-        }
+
+
+
+        exit(0);
     }
+
 }

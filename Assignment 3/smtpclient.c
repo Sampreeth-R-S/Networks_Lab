@@ -62,10 +62,10 @@ int checkmailsyntax(char*temp)
 }
 int checksyntax(char**mail,char sender[],char*receivers)
 {
-    /*for(int i=0;i<6;i++)
+    for(int i=0;i<6;i++)
     {
         printf("%s",mail[i]);
-    }*/
+    }
     char temp[100];
     for(int i=0;i<100;i++)temp[i]='\0';
     int i=0;
@@ -75,11 +75,11 @@ int checksyntax(char**mail,char sender[],char*receivers)
         i++;
     }
     temp[i]='\0';
-    //printf("%d\n",temp[0]);
-    //printf("%d\n",mail[0][0]);
+    printf("%d\n",temp[0]);
+    printf("%d\n",mail[0][0]);
     if(strcmp(temp,"From:")!=0)
     {
-        printf("Syntax error,From expected in first line\n");
+        printf("Syntax ,From expected in first line\n");
         return 0;
     }
     while(mail[0][i]==' ')i++;
@@ -250,14 +250,15 @@ void manage_mail(char *server_IP, int pop3_port, char *username, char *password)
         sprintf(buffer, "RETR %d\r\n", temp);
         send(sockfd, buffer, strlen(buffer), 0);
         receive(sockfd, buffer);
+        printf("%s", buffer);
         while (1)
         {
-            //printf("%d ", (line_no + 1));
+            printf("%d ", (line_no + 1));
             if (line_no == 0)
             {
                 // remove first 6 characters from the buffer and print
                 receive(sockfd, buffer);
-                for (int i = 6; i < strlen(buffer)-2; i++)
+                for (int i = 6; i < strlen(buffer); i++)
                 {
                     printf("%c", buffer[i]);
                 }
@@ -267,13 +268,13 @@ void manage_mail(char *server_IP, int pop3_port, char *username, char *password)
             {
                 // remove first 6 characters from the buffer and print
                 receive(sockfd, buffer);
-                for (int i = 10; i < strlen(buffer)-3; i++)
+                for (int i = 10; i < strlen(buffer); i++)
                 {
                     printf("%c", buffer[i]);
                 }
                 printf(" ");
             }
-            else if (line_no == 3)
+            else if (line_no == 4)
             {
                 receive(sockfd, buffer);
                 for (int i = 8; i < strlen(buffer); i++)
@@ -284,7 +285,7 @@ void manage_mail(char *server_IP, int pop3_port, char *username, char *password)
             else
             {
                 receive(sockfd, buffer);
-                //printf("%s", buffer);
+                printf("%s", buffer);
             }
             line_no++;
             // printf("%s", buffer);
