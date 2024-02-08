@@ -265,7 +265,7 @@ void manage_mail(char *server_IP, int pop3_port, char *username, char *password)
                 }
                 printf(" ");
             }
-            else if (line_no == 4)
+            else if (line_no == 3)
             {
                 receive(sockfd, buffer);
                 for (int i = 8; i < strlen(buffer)-2; i++)
@@ -291,7 +291,7 @@ void manage_mail(char *server_IP, int pop3_port, char *username, char *password)
         scanf("%d", &choice);
         if (choice == -1)
             break;
-        if(choice>mail_count)
+        if(choice>mail_count||choice<=0)
         {
             printf("Mail no. out of range, give again\n");
             continue;
