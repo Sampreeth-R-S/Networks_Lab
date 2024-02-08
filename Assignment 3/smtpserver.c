@@ -149,6 +149,7 @@ int main(int argc,char* argv[])
         char** result=(char**)malloc(100*sizeof(char*));
         for(int i=0;i<100;i++)result[i]=(char*)malloc(100*sizeof(char));
         tokenise(buffer,result);
+        for(int i=0;i<strlen(result[0]);i++)result[0][i]=toupper(result[0][i]);
         if(strcmp(result[0],"HELO")!=0)
         {
             sprintf(buffer,"501 Syntax error in parameters or arguments.\r\n");
@@ -181,6 +182,7 @@ int main(int argc,char* argv[])
         for(int i=0;i<1000;i++)buffer[i]='\0';
         receive(newsockfd,buffer);
         tokenise(buffer,result);
+        for(int i=0;i<strlen(result[0]);i++)result[0][i]=toupper(result[0][i]);
         if(strcmp(result[0],"RCPT"))
         {
             sprintf(buffer,"501 Syntax error in parameters or arguments.\r\n");
@@ -190,6 +192,7 @@ int main(int argc,char* argv[])
         }
         char** receivers=(char**)malloc(100*sizeof(char*));
         int curreceiver=0;
+
         while(strcmp(result[0],"RCPT")==0)
         {
             //printf("Hello\n");
@@ -217,10 +220,12 @@ int main(int argc,char* argv[])
             for(int i=0;i<1000;i++)buffer[i]='\0';
             receive(newsockfd,buffer);
             tokenise(buffer,result);
+            for(int i=0;i<strlen(result[0]);i++)result[0][i]=toupper(result[0][i]);
             //printf("%s\n",result[0]);
         }
         printf("Data\n");
         fflush(stdout);
+        for(int i=0;i<strlen(result[0]);i++)result[0][i]=toupper(result[0][i]);
         if(strcmp(result[0],"DATA"))
         {
             sprintf(buffer,"501 Syntax error in parameters or arguments.\r\n");

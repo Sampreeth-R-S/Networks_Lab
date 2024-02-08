@@ -19,10 +19,11 @@ int checkuser(char* user)
         exit(0);
     }
     //for(int i=0;i<strlen(user);i++)printf("%d ",user[i]);
-    while(!feof(f))
+    char buffer[1000];
+    while(fgets(buffer,1000,f)!=NULL)
     {
-        char buffer[1000];
-        fgets(buffer,1000,f);
+        
+        //fgets(buffer,1000,f);
         //printf("%s\n",buffer);
         char username[1000];
         int i=0;
@@ -57,10 +58,11 @@ int checkpass(char* user,char* pass)
         exit(0);
     }
     int count=0;
-    while(!feof(f))
+    char buffer[1000];
+    while(fgets(buffer,1000,f)!=NULL)
     {
-        char buffer[1000];
-        fgets(buffer,1000,f);
+        
+        //fgets(buffer,1000,f);
         char username[1000];
         int i=0;
         while(buffer[i]!=' ')
@@ -318,15 +320,16 @@ int main(int argc,char*argv[])
             close(newsockfd);
             exit(0);
         }
-        while(!feof(fp))
+        char temp[1000];
+        while(fgets(temp,1000,fp)!=NULL)
         {
-            char temp[1000];
-            fgets(temp,1000,fp);
+            //char temp[1000];
+            //fgets(temp,1000,fp);
             len+=strlen(temp)-1;
             if(strcmp(temp,".\r\n")==0)count++;
         }
         fclose(fp);
-        count--;
+        //count--;
         printf("Count=%d\n",count);
         fflush(stdout);
         sprintf(buffer,"+OK %s's mailbox has %d messages (%d octets)\r\n",user,count,len);
@@ -342,10 +345,11 @@ int main(int argc,char*argv[])
         for(int i=0;i<count;i++)delete[i]=0;
         int var2=0;
         fp=fopen(filepath,"r");
-        while(!feof(fp))
+        //char temp[1000];
+        while(fgets(temp,1000,fp)!=NULL)
         {
-            char temp[1000];
-            fgets(temp,1000,fp);
+            //char temp[1000];
+            //fgets(temp,1000,fp);
             maillen[var2]+=strlen(temp)-1;
             if(strcmp(temp,".\r\n")==0)var2++;
         }
@@ -386,10 +390,11 @@ int main(int argc,char*argv[])
                     continue;
                 }
                 int size=0;
-                while(!feof(fp))
+                char temp[1000];
+                while(fgets(temp,1000,fp)!=NULL)
                 {
-                    char temp[1000];
-                    fgets(temp,1000,fp);
+                    //char temp[1000];
+                    //fgets(temp,1000,fp);
                     if(cur==index)
                     {
                         send(newsockfd,temp,strlen(temp),0);
@@ -402,10 +407,11 @@ int main(int argc,char*argv[])
                 FILE* fp=fopen(filepath,"r");
                 int tempcount=0;
                 int templen=0;
-                while(!feof(fp))
+                char temp[1000];
+                while(fgets(temp,1000,fp)!=NULL)
                 {
-                    char temp[1000];
-                    fgets(temp,1000,fp);
+                    //char temp[1000];
+                    //fgets(temp,1000,fp);
                     if(!delete[tempcount])
                     templen+=strlen(temp)-1;
                     if(strcmp(temp,".\r\n")==0)tempcount++;
@@ -422,7 +428,34 @@ int main(int argc,char*argv[])
             {
                 sprintf(buffer,"+OK POP3 server signing off\r\n");
                 send(newsockfd,buffer,strlen(buffer),0);
-                close(newsockfd);
+               
+                FILE* fp2=fopen("temp.txt","w");
+                FILE* fp=fopen(filepath,"r");
+                int tempcount=0;
+                char temp[1000];
+                while(fgets(temp,1000,fp)!=NULL)
+                {
+                    
+                    //fgets(temp,1000,fp);
+                    if(!delete[tempcount])
+                    {
+                        fputs(temp,fp2);
+                    }
+                    if(strcmp(temp,".\r\n")==0)tempcount++;
+                }
+                fclose(fp);
+                fclose(fp2);
+                fp=fopen(filepath,"w");
+                fp2=fopen("temp.txt","r");
+                while(fgets(temp,1000,fp2)!=NULL)
+                {
+                    fputs(temp,fp);
+                }
+                fclose(fp);
+                fclose(fp2);
+                remove("temp.txt");
+                sprintf(buffer,"goodbye\r\n");
+                send(newsockfd,buffer,strlen(buffer),0);
                 exit(0);
             }
             else if(strcmp("LIST",result[0])==0)
