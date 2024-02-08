@@ -62,10 +62,10 @@ int checkmailsyntax(char*temp)
 }
 int checksyntax(char**mail,char sender[],char*receivers)
 {
-    for(int i=0;i<6;i++)
+    /*for(int i=0;i<6;i++)
     {
         printf("%s",mail[i]);
-    }
+    }*/
     char temp[100];
     for(int i=0;i<100;i++)temp[i]='\0';
     int i=0;
@@ -75,8 +75,8 @@ int checksyntax(char**mail,char sender[],char*receivers)
         i++;
     }
     temp[i]='\0';
-    printf("%d\n",temp[0]);
-    printf("%d\n",mail[0][0]);
+    //printf("%d\n",temp[0]);
+    //printf("%d\n",mail[0][0]);
     if(strcmp(temp,"From:")!=0)
     {
         printf("Syntax ,From expected in first line\n");
@@ -190,7 +190,7 @@ void manage_mail(char *server_IP, int pop3_port, char *username, char *password)
         perror("connect: ");
         exit(0);
     }
-    char buffer[100];
+    char buffer[1000];
     receive(sockfd, buffer);
     printf("%s\n", buffer);
     if (strcmp(buffer, "+OK POP3 server ready\r\n") != 0)
@@ -286,7 +286,7 @@ void manage_mail(char *server_IP, int pop3_port, char *username, char *password)
     }
     while(1)
     {
-        printf("Enter mail number to see: ");
+        printf("Enter mail number to see(-1 to exit): ");
         int choice;
         scanf("%d", &choice);
         if (choice == -1)
@@ -311,13 +311,17 @@ void manage_mail(char *server_IP, int pop3_port, char *username, char *password)
                 printf("Mail deleted\n");
                 break;
             }
+            if(strcmp(result[0],"+OK")==0)
+            {
+                continue;
+            }
             printf("%s", buffer);
-            for(int i=0;i<strlen(buffer);i++)
+            /*for(int i=0;i<strlen(buffer);i++)
             {
                 printf("%d ",buffer[i]);
-            }
-            printf("%d\n",strcmp(buffer,".\r\n"));
-            printf("\n");
+            }*/
+            //printf("%d\n",strcmp(buffer,".\r\n"));
+            //printf("\n");
            
             if (strcmp(buffer, ".\r\n") == 0)
                 break;
@@ -339,7 +343,13 @@ void manage_mail(char *server_IP, int pop3_port, char *username, char *password)
     sprintf(buffer, "QUIT\r\n");
     send(sockfd, buffer, strlen(buffer), 0);
     receive(sockfd, buffer);
-
+    tokenise(buffer,result);
+    if(strcmp(result[0],"-ERR")==0)
+    {
+        printf("Error in QUIT\n");
+        return;
+    }
+    receive(sockfd,buffer);
     if(strcmp(buffer,"goodbye\r\n")==0)
     {
         printf("Goodbye\n");
@@ -415,7 +425,7 @@ int main(int argc, char *argv[])
                 for(int i=0;i<100;i++)
                 {
                     fgets(mail[i],100,stdin);
-                    printf("%d\n",mail[i][0]);
+                    //printf("%d\n",mail[i][0]);
                     if(strcmp(mail[i],".\n")==0)break;
                 }
                 char sender[100];
@@ -512,7 +522,7 @@ int main(int argc, char *argv[])
                 // sprintf(buffer,".\r\n");
                 // send(sockfd,buffer,strlen(buffer),0);
                 // receive(sockfd,buffer);
-                for(int i=2;i<100;i++)
+                for(int i=0;i<100;i++)
                 {
                     send(sockfd,mail[i],strlen(mail[i]),0);
                     //for(int k=0;k<strlen(mail[i]);k++)printf("%d ",mail[i][k]);

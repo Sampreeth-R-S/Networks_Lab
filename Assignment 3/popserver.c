@@ -77,17 +77,17 @@ int checkpass(char* user,char* pass)
         if(strcmp(username,user)==0)
         {
             while(buffer[i]==' ')i++;
-            printf("Hello\n");
+            //printf("Hello\n");
             int j=0;
             char password[1000];
-            printf("buffer[i]=%c ",buffer[i]);
+            //printf("buffer[i]=%c ",buffer[i]);
             while(buffer[i]!='\n'&&buffer[i]!='\r')
             {
                 password[j++]=buffer[i++];
             }
             password[j]='\0';
-            printf("%s ",password);
-            for(int i=0;i<strlen(password);i++)printf("%d ",password[i]);
+            //printf("%s ",password);
+            //for(int i=0;i<strlen(password);i++)printf("%d ",password[i]);
             fflush(stdout);
             if(strcmp(password,pass)==0)
             {

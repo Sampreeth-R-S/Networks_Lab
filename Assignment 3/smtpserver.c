@@ -8,6 +8,7 @@
 #include <arpa/inet.h>
 #include <fcntl.h>
 #include<time.h>
+#include<ctype.h>
 int checkuser(char* user)
 {
     FILE* f=fopen("user.txt","r");
@@ -280,17 +281,25 @@ int main(int argc,char* argv[])
             }
             char temp[1000];
             for(int i=0;i<1000;i++)temp[i]='\0';
-            sprintf(temp,"From: %s\r\n",sender);
-            write(fd,temp,strlen(temp));
+            //sprintf(temp,"From: %s\r\n",sender);
+            //write(fd,temp,strlen(temp));
             for(int i=0;i<1000;i++)temp[i]='\0';
-            sprintf(temp,"To: %s\r\n",receivers[i]);
-            write(fd,temp,strlen(temp));
+            //sprintf(temp,"To: %s\r\n",receivers[i]);
+            //write(fd,temp,strlen(temp));
             for(int i=0;i<1000;i++)temp[i]='\0';
             time_t t = time(NULL);
+            for(int j=0;j<2;j++)
+            {
+                write(fd,mail[j],strlen(mail[j]));
+            }
             struct tm *tm = localtime(&t);
-            sprintf(temp,"Received: %s\r\n",asctime(tm));
+            sprintf(temp,"Received: %s",asctime(tm));
+            i=0;
+            while(temp[i]!='\n')i++;
+            temp[i]='\r';
+            temp[i+1]='\n';
             write(fd,temp,strlen(temp));
-            for(int j=0;j<curline;j++)
+            for(int j=2;j<curline;j++)
             {
                 write(fd,mail[j],strlen(mail[j]));
             }
