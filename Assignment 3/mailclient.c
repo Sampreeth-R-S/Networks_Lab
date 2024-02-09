@@ -224,12 +224,17 @@ void manage_mail(char *server_IP, int pop3_port, char *username, char *password)
         exit(0);
     }
     // The client must now request a list of all messages in the maildrop using the LIST command
-
+    if(strcmp(buffer,"+OK empty mailbox\r\n")==0)
+    {
+        printf("User mailbox is empty\n");
+        return;
+    }
     int mail_count;
     int total_size;
     sprintf(buffer, "STAT\r\n");
     send(sockfd, buffer, strlen(buffer), 0);
     receive(sockfd, buffer);
+
     sscanf(buffer, "+OK %d %d", &mail_count, &total_size);
     printf("Total mail count: %d\n", mail_count);
 
@@ -433,14 +438,15 @@ int main(int argc, char *argv[])
                 }
                 char sender[100];
                 char receivers[100];
-                for(int i=0;i<6;i++)
+                /*for(int i=0;i<6;i++)
                 {
                     printf("%s",mail[i]);
-                }
+                }*/
                 int flag=checksyntax(mail,sender,receivers);
                 if(!flag)
                 {
-                    exit(0);
+                    close(sockfd);
+                    continue;
                 }
                 printf("Syntax correct\n");
                 for(int i=0;i<100;i++)

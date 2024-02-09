@@ -488,7 +488,28 @@ int main(int argc,char*argv[])
                             send(newsockfd,buffer,strlen(buffer),0);
                         }
                     }
+                    sprintf(buffer,"./r/n");
+                    send(newsockfd,buffer,strlen(buffer),0);
 
+                }
+                else
+                {
+                    int index=atoi(result[1])-1;
+                    if(index>count||index<0)
+                    {
+                        sprintf(buffer,"-ERR Invalid message number\r\n");
+                        send(newsockfd,buffer,strlen(buffer),0);
+                        continue;
+                    }
+                    if(delete[index])
+                    {
+                        sprintf(buffer,"-ERR Message deleted\r\n");
+                        printf("Message deleted\n");
+                        send(newsockfd,buffer,strlen(buffer),0);
+                        continue;
+                    }
+                    sprintf(buffer,"+OK %d %d\r\n",index+1,maillen[index]);
+                    end(newsockfd,buffer,strlen(buffer),0);
                 }
             }
             else if(strcmp("DELE",result[0])==0)
