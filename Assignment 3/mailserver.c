@@ -166,6 +166,15 @@ int main(int argc,char* argv[])
         char sender[100];
         for(int i=1;i<strlen(result[2])-1;i++)sender[i-1]=result[2][i];
         sender[strlen(result[2])-2]='\0';
+        int flag=checkuser(sender);
+        if(!flag)
+        {
+            for(int i=0;i<1000;i++)buffer[i]='\0';
+            sprintf(buffer,"550 No such user\r\n");
+            send(newsockfd,buffer,strlen(buffer),0);
+            close(newsockfd);
+            exit(0);
+        }
         for(int i=0;i<1000;i++)buffer[i]='\0';
         sprintf(buffer,"250 %s Sender ok\r\n",result[2]);
         send(newsockfd,buffer,strlen(buffer),0);

@@ -255,6 +255,12 @@ int main(int argc,char* argv[])
         receive(sockfd,buffer);
         printf("Response received: %s\n",buffer);
         tokenise(buffer,result);
+        if(strcmp(result[0],"550")==0)
+        {
+            printf("User specified in FROM does not exist\n");
+            close(sockfd);
+            continue;
+        }
         for(int i=0;i<1000;i++)buffer[i]='\0';
         sprintf(buffer,"RCPT TO: <%s>\r\n",receivers);
         send(sockfd,buffer,strlen(buffer),0);

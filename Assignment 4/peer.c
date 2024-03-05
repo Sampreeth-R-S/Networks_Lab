@@ -55,6 +55,7 @@ int main(int argc, char*argv[])
     while(1)
     {
         fd_set readfds;
+        FD_ZERO(&readfds);
         int maxfd=0;
         for(int i=0;i<4;i++)
         {
@@ -63,10 +64,9 @@ int main(int argc, char*argv[])
                 FD_SET(fd[i],&readfds);
                 if(fd[i]>maxfd)maxfd=fd[i];
             }
-            
         }
         struct timeval timer;
-        timer.tv_sec=300;
+        timer.tv_sec=5;
         timer.tv_usec=0;
         int result=select(maxfd+1,&readfds,NULL,NULL,&timer);
         if(result==0)
