@@ -1,0 +1,3 @@
+1) 0th bit(lowest bit): Indicates whether data frame or ACK frame(0:Data)
+2) Next 4 bits: indicates sequence number
+3) Ack frame: 6th bit indicates nospace(1: nospace, stop sending)
