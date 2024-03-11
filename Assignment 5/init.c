@@ -13,7 +13,11 @@
 #include <netinet/in.h>
 #include <arpa/inet.h>
 #include <fcntl.h>
-
+#ifdef DEBUG
+    #define myprintf printf
+#else
+    #define myprintf //
+#endif
 #define T 5
 struct sndwnd{
     int start,mid,end,lastwritten;
@@ -34,8 +38,8 @@ struct sh{
     char recvbuf[5][1024];
     struct sndwnd sendwindow;
     struct rcvwnd receivewindow;
-    struct tm* timers[10];
-    int timerset[10];
+    struct tm* timers[16];
+    //int timerset[10];
     int next_write;
     int send_isfree[10];
     int recv_isfree[5];
@@ -81,6 +85,52 @@ void* R(void* arg)
         int ret = select(maxfd+1,&readfds,NULL,NULL,&timeout);
         if(ret==0)
         {
+            for(int i=0;i<25;i++)
+            {
+                if(shm[i].free)
+                {
+                    continue;
+                }
+                if(shm[i].is_empty)
+                {
+                    int emptyspace=0;
+                    int index=i;
+                    if(shm[index].receivewindow.next_expected<shm[index].receivewindow.next_supplied)
+                    {
+                        emptyspace = 5-(shm[index].receivewindow.next_expected+16-shm[index].receivewindow.next_supplied);
+                    }
+                    else
+                    {
+                        emptyspace = 5-(shm[index].receivewindow.next_expected-shm[index].receivewindow.next_supplied);
+                    }
+                    if(emptyspace>0)
+                    {
+                        char sendbuf[1024];
+                        for(int i=0;i<1024;i++)sendbuf[i]=0;
+                        sendbuf[0]+=1;
+                        sendbuf[1]=emptyspace;
+                        int lastreceived = (shm[i].receivewindow.next_expected-1+16)%16;
+                        for(int j=0;j<4;j++)
+                        {
+                            if((lastreceived>>j)&1)
+                            {
+                                sendbuf[0]+=1<<(j+1);
+                            }
+                        }
+                        struct sockaddr_in cliaddr;
+                        int clilen=sizeof(cliaddr);
+                        cliaddr.sin_family = AF_INET;
+                        cliaddr.sin_port = htons(shm[i].receiver_port);
+                        inet_pton(AF_INET,shm[i].receiver_ip,&cliaddr.sin_addr);
+                        int n=sendto(shm[i].sockfd,sendbuf,strlen(sendbuf),0,(struct sockaddr *)&cliaddr,clilen);
+                        if(n<0)
+                        {
+                            perror("sendto");
+                        }
+                        shm[i].is_empty=0;
+                    }
+                }
+            }
             continue;
         }
         pthread_mutex_lock(&shm_mutex);
@@ -202,7 +252,7 @@ void* R(void* arg)
                             //     perror("sendto");
                             // }
                             int full = 0;
-                            int index = arr[i];
+                            index = arr[i];
                             if(shm[index].receivewindow.next_expected>=shm[index].receivewindow.next_supplied)
                             {
                                 if(shm[index].receivewindow.next_expected-shm[index].receivewindow.next_supplied>=5)
@@ -304,7 +354,47 @@ void* S(void* arg)
         {
             if(!shm[i].free)
             {
-
+                while(shm[i].sendwindow.mid!=shm[i].sendwindow.end)
+                {
+                    int found = 0;
+                    for(int j=0;j<10;j++)
+                    {
+                        if(!shm[i].send_isfree[j])
+                        {
+                            int sequence_number=0;
+                            for(int i=4;i>=1;i--)
+                            {
+                                sequence_number=sequence_number*2+((shm[i].sendbuf[j][0])&1);
+                            }
+                            if(sequence_number==shm[i].sendwindow.mid)
+                            {
+                                found = 1;
+                                struct sockaddr_in cliaddr;
+                                int clilen=sizeof(cliaddr);
+                                cliaddr.sin_family = AF_INET;
+                                cliaddr.sin_port = htons(shm[i].receiver_port);
+                                inet_pton(AF_INET,shm[i].receiver_ip,&cliaddr.sin_addr);
+                                int n=sendto(shm[i].sockfd,shm[i].sendbuf[j],strlen(shm[i].sendbuf[j]),0,(struct sockaddr *)&cliaddr,clilen);
+                                if(n<0)
+                                {
+                                    perror("sendto");
+                                }
+                                shm[i].timers[shm[i].sendwindow.mid] = (struct tm*)malloc(sizeof(struct tm));
+                                time_t t = time(NULL);
+                                shm[i].timers[shm[i].sendwindow.mid] = localtime(&t);
+                                myprintf("Sent packet %d at time %d hours,%d seconds\n",shm[i].sendwindow.mid,shm[i].timers[shm[i].sendwindow.mid]->tm_hour,shm[i].timers[shm[i].sendwindow.mid]->tm_sec);
+                                shm[i].send_isfree[j]=1;
+                                break;
+                            }
+                        }
+                    }
+                    if(!found)
+                    {
+                        break;
+                    }
+                    shm[i].sendwindow.mid++;
+                    shm[i].sendwindow.mid%=16;
+                }
             }
         }
         pthread_mutex_unlock(&shm_mutex);

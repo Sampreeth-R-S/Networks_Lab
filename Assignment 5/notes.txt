@@ -1,3 +1,7 @@
 1) 0th bit(lowest bit): Indicates whether data frame or ACK frame(0:Data)
 2) Next 4 bits: indicates sequence number
 3) Ack frame: 6th bit indicates nospace(1: nospace, stop sending)
+4)  On  a  timeout  over  select(),  it  additionally  checks  whether  the  flag 
+nospace was set but now there is space available in the receive buffer. In that case, it sends 
+a duplicate ACK message with the last acknowledged sequence number but with the updated 
+rwnd size, and resets the flag (there might be a problem here – try to find it out and resolve!): Problem: if the new ACK frame gets lost, sender will wait forever, solution: sender sends a special frame probing the receiver empty space
