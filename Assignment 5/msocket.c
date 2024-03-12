@@ -97,7 +97,7 @@ int m_socket(int domain_name, int type, int protocol)
         {
             shm[index].timers[j].tm_hour = 1e9;
         }
-        shm[index].sendwindow.start = shm[index].sendwindow.mid  = shm[index].sendwindow.lastwritten = 0;
+        shm[index].sendwindow.start = shm[index].sendwindow.mid  = shm[index].sendwindow.next_seq_no = 0;
         shm[index].sendwindow.end = 5;
         shm[index].receivewindow.next_expected = shm[index].receivewindow.next_supplied = 0;
         for(int j=0;j<10;j++)
@@ -109,6 +109,10 @@ int m_socket(int domain_name, int type, int protocol)
             shm[index].recv_isfree[j] = 1;
         }
         shm[index].is_empty = 0; 
+        shm[index].sender_port = 0;
+        shm[index].receiver_port = 0;
+        strcpy(shm[index].sender_ip,"");
+        strcpy(shm[index].receiver_ip,"");
         myprintf("Free index found at %d\n",index);
     }
     V(mutex);
@@ -149,15 +153,23 @@ int m_bind(int sockfd,char* sourceip, int sourceport, char* destinationip, int d
     int shmid2 = shmget(key2, sizeof(struct sockinfo), 0777|IPC_CREAT);
     struct sockinfo* SOCK_INFO = (struct sockinfo*)shmat(shmid2, (void*)0, 0);
     P(mutex);
+    if(shm[sockfd].free)
+    {
+        errno = ENOTBOUND;
+        V(mutex);
+        return -1;
+    }
+    if(shm[sockfd].pid!=getpid())
+    {
+        errno = EACCES;
+        V(mutex);
+        return -1;
+    }
     SOCK_INFO->sock_id = shm[sockfd].sockfd;
     SOCK_INFO->err_no = 0;
     SOCK_INFO->port = sourceport;
     strcpy(SOCK_INFO->ip,sourceip);
-    shm[sockfd].receiver_port = destinationport;
-    strcpy(shm[sockfd].receiver_ip,destinationip);
-    shm[sockfd].sender_port = sourceport;
-    strcpy(shm[sockfd].sender_ip,sourceip);
-
+    
     V(mutex);
     V(main_wait);
     P(func_wait);
@@ -168,14 +180,105 @@ int m_bind(int sockfd,char* sourceip, int sourceport, char* destinationip, int d
         V(mutex);
         return -1;
     }
+    shm[sockfd].receiver_port = destinationport;
+    strcpy(shm[sockfd].receiver_ip,destinationip);
+    shm[sockfd].sender_port = sourceport;
+    strcpy(shm[sockfd].sender_ip,sourceip);
     V(mutex);
     myprintf("Bind complete\n");
     return 0;
 }
-
+int m_sendto(int sockfd,char* buffer,int len,int flags,struct sockaddr_in cliaddr,int clilen)
+{
+    if(sockfd<0||sockfd>=25)
+    {
+        errno = EINVAL;
+        return -1;
+    }
+    key_t key = ftok("init.c",64);
+    int shmid = shmget(key, sizeof(struct sh)*30, 0777|IPC_CREAT);
+    shm = (struct sh*)shmat(shmid, (void*)0, 0);
+    key_t key1 = ftok("init.c",64);
+    key_t key2 = ftok("init.c",65);
+    key_t key3 = ftok("init.c",66);
+    int mutex = semget(key1, 1, 0666|IPC_CREAT);
+    int main_wait = semget(key2, 1, 0666|IPC_CREAT);
+    int func_wait = semget(key3, 1, 0666|IPC_CREAT);
+    struct sembuf pop, vop ;
+    pop.sem_num = vop.sem_num = 0;
+	pop.sem_flg = vop.sem_flg = 0;
+	pop.sem_op = -1 ; vop.sem_op = 1 ;
+    P(mutex);
+    if(shm[sockfd].free)
+    {
+        errno = ENOTBOUND;
+        V(mutex);
+        return -1;
+    }
+    if(shm[sockfd].pid!=getpid())
+    {
+        errno = EACCES;
+        V(mutex);
+        return -1;
+    }
+    if(strcmp(shm[sockfd].receiver_ip,inet_ntoa(cliaddr.sin_addr))!=0||shm[sockfd].receiver_port!=ntohs(cliaddr.sin_port))
+    {
+        errno = ENOTBOUND;
+        V(mutex);
+        return -1;
+    }
+    int sequence_number = shm[sockfd].sendwindow.next_seq_no;
+    shm[sockfd].sendwindow.next_seq_no = (shm[sockfd].sendwindow.next_seq_no+1)%16;
+    int index=-1;
+    for(int i=0;i<10;i++)
+    {
+        if(shm[sockfd].send_isfree[i])
+        {
+            index = i;
+            shm[sockfd].send_isfree[i] = 0;
+            break;
+        }
+    }
+    if(index==-1)
+    {
+        errno = ENOBUFS;
+        V(mutex);
+        return -1;
+    }
+    char temp[1024];
+    for(int i=0;i<len;i++)
+    {
+        temp[i]=0;
+    }
+    for(int i=4;i>=0;i--)
+    {
+        if((sequence_number>>i)&1)
+        {
+            temp[0]+=1<<(i+1);
+        }
+    }
+    for(int i=0;i<len;i++)
+    {
+        temp[i+1] = buffer[i];
+    }
+    strcpy(shm[sockfd].sendbuf[index],temp);
+    V(mutex);
+    return 0;
+}
 
 int main()
 {
     int sockfd = m_socket(MTP_SOCKET, SOCK_MTP, 0);
     int temp = m_bind(sockfd,"127.0.0.1",8000,"127.0.0.1",8002);
+    char buffer[1024];
+    strcpy(buffer,"Hello");
+    struct sockaddr_in cliaddr;
+    cliaddr.sin_family = AF_INET;
+    cliaddr.sin_port = htons(8002);
+    inet_pton(AF_INET,"127.0.0.1",&cliaddr.sin_addr);
+    int temp1 = m_sendto(sockfd,buffer,5,0,cliaddr,sizeof(cliaddr));
+    if(temp1)
+    {
+        perror("Error in sendto");
+    }
 }

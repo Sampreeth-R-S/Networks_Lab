@@ -1,6 +1,6 @@
 #define T 5
 struct sndwnd{
-    int start,mid,end,lastwritten;
+    int start,mid,end,next_seq_no;
 };
 struct rcvwnd{
     int next_expected,next_supplied;

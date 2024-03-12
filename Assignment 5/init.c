@@ -38,7 +38,7 @@ struct sockinfo{
 };
 
 struct sndwnd{
-    int start,mid,end,lastwritten;
+    int start,mid,end,next_seq_no;
 };
 struct rcvwnd{
     int next_expected,next_supplied;
@@ -61,6 +61,7 @@ struct sh{
     int next_write;
     int send_isfree[10];
     int recv_isfree[5];
+    //int seq_no_is_available[16];
     int is_empty;
 };
 
@@ -68,6 +69,12 @@ struct sh* shm;
 pthread_mutex_t shm_mutex = PTHREAD_MUTEX_INITIALIZER;
 void* R(void* arg)
 {
+    key_t key1 = ftok("init.c",64);
+    int mutex = semget(key1, 1, 0666|IPC_CREAT);
+    struct sembuf pop, vop ;
+    pop.sem_num = vop.sem_num = 0;
+	pop.sem_flg = vop.sem_flg = 0;
+	pop.sem_op = -1 ; vop.sem_op = 1 ;
     while(1)
     {
         fd_set readfds;
@@ -78,7 +85,7 @@ void* R(void* arg)
         }
         int maxfd=-1;
         int cur=0;
-        pthread_mutex_lock(&shm_mutex);
+        P(mutex);
         for(int i=0;i<25;i++)
         {
             if(!shm[i].free)
@@ -91,7 +98,7 @@ void* R(void* arg)
                 arr[cur++]=shm[i].sockfd;
             }
         }
-        pthread_mutex_unlock(&shm_mutex);
+        V(mutex);
         if(maxfd==-1)
         {
             sleep(1);
@@ -152,7 +159,7 @@ void* R(void* arg)
             }
             continue;
         }
-        pthread_mutex_lock(&shm_mutex);
+        P(mutex);
         for(int i=0;i<cur;i++)
         {
             if(FD_ISSET(shm[arr[i]].sockfd,&readfds))
@@ -402,7 +409,7 @@ void* R(void* arg)
                 }
             }
         }
-        pthread_mutex_unlock(&shm_mutex);
+        V(mutex);
 
 
     }
@@ -410,19 +417,26 @@ void* R(void* arg)
 
 void* S(void* arg)
 {
+    key_t key1 = ftok("init.c",64);
+    int mutex = semget(key1, 1, 0666|IPC_CREAT);
+    struct sembuf pop, vop ;
+    pop.sem_num = vop.sem_num = 0;
+	pop.sem_flg = vop.sem_flg = 0;
+	pop.sem_op = -1 ; vop.sem_op = 1 ;
     while(1)
     {
-        pthread_mutex_lock(&shm_mutex);
+        P(mutex);
         for(int i=0;i<25;i++)
         {
             if(!shm[i].free)
             {
                 time_t currentTime;
                 time(&currentTime);
-                myprintf("i=%d, start=%d,address = %d\n",i,shm[i].sendwindow.start,shm[i].timers[shm[i].sendwindow.start]);
+                myprintf("i=%d, start=%d,address = %d\n",i,shm[i].sendwindow.start,shm[i].timers[shm[i].sendwindow.start].tm_hour);
                 double time_difference = difftime(currentTime,mktime(&shm[i].timers[shm[i].sendwindow.start]));
                 if(time_difference>=T*60)
                 {
+                    myprintf("Timeout detected\n");
                     for(int j=shm[i].sendwindow.start;j!=shm[i].sendwindow.mid;j=(j+1)%16)
                     {
                         int found = 0;
@@ -450,7 +464,7 @@ void* S(void* arg)
                                     }
                                     time_t t = time(NULL);
                                     shm[i].timers[j] = *(localtime(&t));
-                                    myprintf("Sent packet %d at time %d hours,%d seconds due to timeout\n",shm[i].sendwindow.mid,shm[i].timers[shm[i].sendwindow.mid].tm_hour,shm[i].timers[shm[i].sendwindow.mid].tm_sec);
+                                    myprintf("Sent packet %d at time %d hours,%d seconds due to timeout\n",j,shm[i].timers[j].tm_hour,shm[i].timers[j].tm_sec);
                                     //shm[i].send_isfree[k]=1;
                                     break;
                                 }
@@ -510,7 +524,7 @@ void* S(void* arg)
                 }
             }
         }
-        pthread_mutex_unlock(&shm_mutex);
+        V(mutex);
         sleep((T*60)/2);
     }
 }
@@ -533,7 +547,7 @@ int main()
     myprintf("main_wait = %d\n",main_wait);
     myprintf("func_wait = %d\n",func_wait);
     shm = (struct sh*)shmat(shmid, (void*)0, 0);
-    myprintf("%d\n",shm);
+    myprintf("%ld\n",(long int)shm);
     for(int i=0;i<25;i++)
     {
         shm[i].free = 1;
@@ -570,6 +584,7 @@ int main()
                 if(bindret<0)
                 {
                     SOCK_INFO->err_no = errno;
+                    myprintf("Bind failed\n");
                 }
                 else
                 {
