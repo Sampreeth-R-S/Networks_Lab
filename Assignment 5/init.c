@@ -2,8 +2,8 @@
 #include <sys/ipc.h>
 #include <sys/select.h>
 #include <sys/shm.h>	
-#include<pthread.h>
-#include<time.h>
+#include <pthread.h>
+#include <time.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <unistd.h>
@@ -13,12 +13,30 @@
 #include <netinet/in.h>
 #include <arpa/inet.h>
 #include <fcntl.h>
+#include <sys/types.h>
+#include <sys/ipc.h>
+#include <error.h>
+#include <errno.h>
+#include <sys/sem.h>
 #ifdef DEBUG
     #define myprintf printf
 #else
     #define myprintf //
 #endif
 #define T 5
+#define P(s) semop(s, &pop, 1)  /* pop is the structure we pass for doing
+				   the P(s) operation */
+#define V(s) semop(s, &vop, 1)  /* vop is the structure we pass for doing
+				   the V(s) operation */
+
+
+struct sockinfo{
+    int sock_id;
+    char ip[16];
+    int port;
+    int err_no;
+};
+
 struct sndwnd{
     int start,mid,end,lastwritten;
 };
@@ -38,7 +56,7 @@ struct sh{
     char recvbuf[5][1024];
     struct sndwnd sendwindow;
     struct rcvwnd receivewindow;
-    struct tm* timers[16];
+    struct tm timers[16];
     //int timerset[10];
     int next_write;
     int send_isfree[10];
@@ -127,6 +145,7 @@ void* R(void* arg)
                         {
                             perror("sendto");
                         }
+                        myprintf("Sent ack to %s:%d\n",shm[i].receiver_ip,shm[i].receiver_port);
                         shm[i].is_empty=0;
                     }
                 }
@@ -329,6 +348,7 @@ void* R(void* arg)
                             {
                                 perror("sendto");
                             }
+                            myprintf("Sent ack to %s:%d\n",shm[index].receiver_ip,shm[index].receiver_port);
                         }
                     }
                 }
@@ -378,6 +398,7 @@ void* R(void* arg)
                         perror("sendto");
                     }
                     shm[i].is_empty=0;
+                    myprintf("Sent ack to %s:%d\n",shm[i].receiver_ip,shm[i].receiver_port);
                 }
             }
         }
@@ -398,7 +419,8 @@ void* S(void* arg)
             {
                 time_t currentTime;
                 time(&currentTime);
-                double time_difference = difftime(currentTime,mktime(shm[i].timers[shm[i].sendwindow.start]));
+                myprintf("i=%d, start=%d,address = %d\n",i,shm[i].sendwindow.start,shm[i].timers[shm[i].sendwindow.start]);
+                double time_difference = difftime(currentTime,mktime(&shm[i].timers[shm[i].sendwindow.start]));
                 if(time_difference>=T*60)
                 {
                     for(int j=shm[i].sendwindow.start;j!=shm[i].sendwindow.mid;j=(j+1)%16)
@@ -426,10 +448,9 @@ void* S(void* arg)
                                     {
                                         perror("sendto");
                                     }
-                                    shm[i].timers[j] = (struct tm*)malloc(sizeof(struct tm));
                                     time_t t = time(NULL);
-                                    shm[i].timers[j] = localtime(&t);
-                                    myprintf("Sent packet %d at time %d hours,%d seconds\n",shm[i].sendwindow.mid,shm[i].timers[shm[i].sendwindow.mid]->tm_hour,shm[i].timers[shm[i].sendwindow.mid]->tm_sec);
+                                    shm[i].timers[j] = *(localtime(&t));
+                                    myprintf("Sent packet %d at time %d hours,%d seconds due to timeout\n",shm[i].sendwindow.mid,shm[i].timers[shm[i].sendwindow.mid].tm_hour,shm[i].timers[shm[i].sendwindow.mid].tm_sec);
                                     //shm[i].send_isfree[k]=1;
                                     break;
                                 }
@@ -472,10 +493,9 @@ void* S(void* arg)
                                 {
                                     perror("sendto");
                                 }
-                                shm[i].timers[shm[i].sendwindow.mid] = (struct tm*)malloc(sizeof(struct tm));
                                 time_t t = time(NULL);
-                                shm[i].timers[shm[i].sendwindow.mid] = localtime(&t);
-                                myprintf("Sent packet %d at time %d hours,%d seconds\n",shm[i].sendwindow.mid,shm[i].timers[shm[i].sendwindow.mid]->tm_hour,shm[i].timers[shm[i].sendwindow.mid]->tm_sec);
+                                shm[i].timers[shm[i].sendwindow.mid] = *(localtime(&t));
+                                myprintf("Sent packet %d at time %d hours,%d seconds\n",shm[i].sendwindow.mid,shm[i].timers[shm[i].sendwindow.mid].tm_hour,shm[i].timers[shm[i].sendwindow.mid].tm_sec);
                                 //shm[i].send_isfree[j]=1;
                                 break;
                             }
@@ -491,24 +511,79 @@ void* S(void* arg)
             }
         }
         pthread_mutex_unlock(&shm_mutex);
-        sleep(T/2)
+        sleep((T*60)/2);
     }
 }
 int main()
 {
     key_t key = ftok("init.c",64);
     int shmid = shmget(key, sizeof(struct sh)*30, 0777|IPC_CREAT);
+    key_t key1 = ftok("init.c",64);
+    key_t key2 = ftok("init.c",65);
+    key_t key3 = ftok("init.c",66);
+    int shmid2 = shmget(key2, sizeof(struct sockinfo), 0777|IPC_CREAT);
+    struct sockinfo* SOCK_INFO = (struct sockinfo*)shmat(shmid2, (void*)0, 0);
+    int mutex = semget(key1, 1, 0666|IPC_CREAT);
+    int main_wait = semget(key2, 1, 0666|IPC_CREAT);
+    int func_wait = semget(key3, 1, 0666|IPC_CREAT);
+    semctl(mutex, 0, SETVAL, 1);
+    semctl(main_wait,0,SETVAL,0);
+    semctl(func_wait,0,SETVAL,0);
+    myprintf("mutex = %d\n",mutex);
+    myprintf("main_wait = %d\n",main_wait);
+    myprintf("func_wait = %d\n",func_wait);
     shm = (struct sh*)shmat(shmid, (void*)0, 0);
-    for(int i=0;i<30;i++)
+    myprintf("%d\n",shm);
+    for(int i=0;i<25;i++)
     {
         shm[i].free = 1;
     }
     pthread_t t1,t2;
     pthread_create(&t1,NULL,R,NULL);
     pthread_create(&t2,NULL,S,NULL);
+    struct sembuf pop, vop ;
+    pop.sem_num = vop.sem_num = 0;
+	pop.sem_flg = vop.sem_flg = 0;
+	pop.sem_op = -1 ; vop.sem_op = 1 ;
+    while(1)
+    {
+        P(main_wait);
+        P(mutex);
+            if(SOCK_INFO->sock_id==0)
+            {
+                int sockfd = socket(AF_INET, SOCK_DGRAM, 0);
+                if(sockfd<0)
+                {
+                    SOCK_INFO->err_no = errno;
+                }
+                else
+                    SOCK_INFO->sock_id = sockfd;
+                myprintf("Socket created\n");
+            }
+            else
+            {
+                struct sockaddr_in servaddr;
+                servaddr.sin_family = AF_INET;
+                inet_pton(AF_INET,SOCK_INFO->ip,&servaddr.sin_addr);
+                servaddr.sin_port = htons(SOCK_INFO->port);
+                int bindret = bind(SOCK_INFO->sock_id,(struct sockaddr *)&servaddr,sizeof(servaddr));
+                if(bindret<0)
+                {
+                    SOCK_INFO->err_no = errno;
+                }
+                else
+                {
+                    SOCK_INFO->err_no = 0;
+                }
+                myprintf("Bind complete\n");
+            }
+        V(mutex);
+        V(func_wait);
+
+    }
     pthread_join(t1,NULL);
     pthread_join(t2,NULL);
     return 0;
-
+    
 
 }
