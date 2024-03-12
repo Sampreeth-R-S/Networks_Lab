@@ -175,13 +175,55 @@ void* R(void* arg)
                     {
                         if(sequence_number-shm[index].sendwindow.start<5)
                         {
+                            for(int j=shm[index].sendwindow.start;j!=(sequence_number+1)%16;j=(j+1)%16)
+                            {
+                                int found = 0;
+                                for(int k=0;k<10;k++)
+                                {
+                                    if(!shm[index].send_isfree[k])
+                                    {
+                                        int temp_sequence_number=0;
+                                        for(int l=4;l>=1;l--)
+                                        {
+                                            temp_sequence_number=temp_sequence_number*2+((shm[index].sendbuf[k][0])&1);
+                                        }
+                                        if(temp_sequence_number==j)
+                                        {
+                                            found = 1;
+                                            shm[index].send_isfree[k]=1;
+                                            break;
+                                        }
+                                    }
+                                }
+                            }
                             shm[index].sendwindow.start = (sequence_number+1)%16;
                         }
                     }
                     else 
                     {
-                        if(sequence_number+15-shm[index].sendwindow.start<5)
+                        if(sequence_number+16-shm[index].sendwindow.start<5)
                         {
+                            for(int j=shm[index].sendwindow.start;j!=(sequence_number+1)%16;j=(j+1)%16)
+                            {
+                                int found = 0;
+                                for(int k=0;k<10;k++)
+                                {
+                                    if(!shm[index].send_isfree[k])
+                                    {
+                                        int temp_sequence_number=0;
+                                        for(int l=4;l>=1;l--)
+                                        {
+                                            temp_sequence_number=temp_sequence_number*2+((shm[index].sendbuf[k][0])&1);
+                                        }
+                                        if(temp_sequence_number==j)
+                                        {
+                                            found = 1;
+                                            shm[index].send_isfree[k]=1;
+                                            break;
+                                        }
+                                    }
+                                }
+                            }
                             shm[index].sendwindow.start = (sequence_number+1)%16;
                         }
                     }
@@ -354,6 +396,57 @@ void* S(void* arg)
         {
             if(!shm[i].free)
             {
+                time_t currentTime;
+                time(&currentTime);
+                double time_difference = difftime(currentTime,mktime(shm[i].timers[shm[i].sendwindow.start]));
+                if(time_difference>=T*60)
+                {
+                    for(int j=shm[i].sendwindow.start;j!=shm[i].sendwindow.mid;j=(j+1)%16)
+                    {
+                        int found = 0;
+                        for(int k=0;k<10;k++)
+                        {
+                            if(!shm[i].send_isfree[k])
+                            {
+                                int sequence_number=0;
+                                for(int l=4;l>=1;l--)
+                                {
+                                    sequence_number=sequence_number*2+((shm[i].sendbuf[k][0])&1);
+                                }
+                                if(sequence_number==j)
+                                {
+                                    found = 1;
+                                    struct sockaddr_in cliaddr;
+                                    int clilen=sizeof(cliaddr);
+                                    cliaddr.sin_family = AF_INET;
+                                    cliaddr.sin_port = htons(shm[i].receiver_port);
+                                    inet_pton(AF_INET,shm[i].receiver_ip,&cliaddr.sin_addr);
+                                    int n=sendto(shm[i].sockfd,shm[i].sendbuf[k],strlen(shm[i].sendbuf[k]),0,(struct sockaddr *)&cliaddr,clilen);
+                                    if(n<0)
+                                    {
+                                        perror("sendto");
+                                    }
+                                    shm[i].timers[j] = (struct tm*)malloc(sizeof(struct tm));
+                                    time_t t = time(NULL);
+                                    shm[i].timers[j] = localtime(&t);
+                                    myprintf("Sent packet %d at time %d hours,%d seconds\n",shm[i].sendwindow.mid,shm[i].timers[shm[i].sendwindow.mid]->tm_hour,shm[i].timers[shm[i].sendwindow.mid]->tm_sec);
+                                    //shm[i].send_isfree[k]=1;
+                                    break;
+                                }
+                            }
+                        }
+                        if(!found)
+                        {
+                            break;
+                        }
+                    }
+                }
+            }
+        }
+        for(int i=0;i<25;i++)
+        {
+            if(!shm[i].free)
+            {
                 while(shm[i].sendwindow.mid!=shm[i].sendwindow.end)
                 {
                     int found = 0;
@@ -383,7 +476,7 @@ void* S(void* arg)
                                 time_t t = time(NULL);
                                 shm[i].timers[shm[i].sendwindow.mid] = localtime(&t);
                                 myprintf("Sent packet %d at time %d hours,%d seconds\n",shm[i].sendwindow.mid,shm[i].timers[shm[i].sendwindow.mid]->tm_hour,shm[i].timers[shm[i].sendwindow.mid]->tm_sec);
-                                shm[i].send_isfree[j]=1;
+                                //shm[i].send_isfree[j]=1;
                                 break;
                             }
                         }
@@ -398,6 +491,7 @@ void* S(void* arg)
             }
         }
         pthread_mutex_unlock(&shm_mutex);
+        sleep(T/2)
     }
 }
 int main()

@@ -7,6 +7,7 @@
 #include <netinet/in.h>
 #include <arpa/inet.h>
 #include <fcntl.h>
+#include<signal.h>
 int main()
 {
     while(1)
@@ -34,18 +35,24 @@ int main()
             perror("Unable to create socket\n");
             exit(0);
         }
-        if ((connect(sockid, (struct sockaddr *)&serv_addr, sizeof(serv_addr))) < 0)
-        {
-            perror("Unable to connect to server\n");
-            exit(0);
-        }
+        // if ((connect(sockid, (struct sockaddr *)&serv_addr, sizeof(serv_addr))) < 0)
+        // {
+        //     perror("Unable to connect to server\n");
+        //     exit(0);
+        // }
+        signal(SIGPIPE,SIG_IGN);
         char buf[100];
         for(int i=0;i<100;i++) buf[i]='\0';
         sprintf(buf,"%d",k);
         int i=0;
         while(buf[i]!='\0')i++;
         buf[i]='#';
-        send(sockid,buf,i+1,0);
+        int tempval=sendto(sockid,buf,i+1,0,(struct sockaddr*)&serv_addr,sizeof(serv_addr));
+        if(tempval<0)
+        {
+            perror("Unable to send key\n");
+            exit(0);
+        }
         int len;
         while((len=read(fd,buf,100))>=100)
         {
@@ -55,7 +62,12 @@ int main()
         }
         if(len>=100)len=0;
         buf[len]='#';
-        send(sockid,buf,len+1,0);
+        int ret=sendto(sockid,buf,len+1,0,(struct sockaddr*)&serv_addr,sizeof(serv_addr));
+        if(ret<0)
+        {
+            perror("Unable to send file\n");
+            exit(0);
+        }
         close(fd);
         printf("File sent\n");
         char filename2[2000];
