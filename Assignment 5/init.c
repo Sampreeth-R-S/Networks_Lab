@@ -143,6 +143,7 @@ void* R(void* arg)
                                 sendbuf[0]+=1<<(j+1);
                             }
                         }
+                        sendbuf[0]+=1<<6;
                         struct sockaddr_in cliaddr;
                         int clilen=sizeof(cliaddr);
                         cliaddr.sin_family = AF_INET;
@@ -153,7 +154,7 @@ void* R(void* arg)
                         {
                             perror("sendto");
                         }
-                        myprintf("Sent ack to %s:%d\n",shm[i].receiver_ip,shm[i].receiver_port);
+                        myprintf("Sent ack to %s:%d to clear emptyspace\n",shm[i].receiver_ip,shm[i].receiver_port);
                         shm[i].is_empty=0;
                     }
                 }
@@ -184,16 +185,18 @@ void* R(void* arg)
                 int temp = buffer[0];
                 if(temp&1)
                 {
-                    myprintf("ACK frame");
+                    myprintf("ACK frame\n");
                     char receiver_ip[16];
                     inet_ntop(cliaddr.sin_family,&cliaddr.sin_addr,receiver_ip,16);
                     int receiver_port = ntohs(cliaddr.sin_port);
                     if(strcmp(receiver_ip,shm[arr[i]].receiver_ip)!=0)
                     {
+                        myprintf("Received ACK from client not bound to me, discarding\n");
                         continue;
                     }
                     if(receiver_port!=shm[arr[i]].receiver_port)
                     {
+                        myprintf("Received ACK from port not bound to me, discarding\n");
                         continue;
                     }
                     int sequence_number = 0;
@@ -201,9 +204,12 @@ void* R(void* arg)
                     {
                         sequence_number=sequence_number*2+((temp>>i)&1);
                     }
+                    myprintf("ACK sequence number: %d\n",sequence_number);
                     int index = arr[i];
-                    if(sequence_number>shm[index].sendwindow.start)
+                    int new_ack=0;
+                    if(sequence_number>=shm[index].sendwindow.start)
                     {
+                        new_ack=1;
                         if(sequence_number-shm[index].sendwindow.start<5)
                         {
                             for(int j=shm[index].sendwindow.start;j!=(sequence_number+1)%16;j=(j+1)%16)
@@ -232,6 +238,7 @@ void* R(void* arg)
                     }
                     else 
                     {
+                        new_ack=1;
                         if(sequence_number+16-shm[index].sendwindow.start<5)
                         {
                             for(int j=shm[index].sendwindow.start;j!=(sequence_number+1)%16;j=(j+1)%16)
@@ -258,6 +265,10 @@ void* R(void* arg)
                             shm[index].sendwindow.start = (sequence_number+1)%16;
                         }
                     }
+                    if(!new_ack)
+                    {
+                        continue;
+                    }
                     if((temp>>5)&1)
                     {
                         shm[index].sendwindow.end = shm[index].sendwindow.start;
@@ -267,6 +278,7 @@ void* R(void* arg)
                         int emptyspace = buffer[1];
                         shm[index].sendwindow.end = (shm[index].sendwindow.start+emptyspace)%16;
                     }
+                    myprintf("Empty space set as %d\n",buffer[1]);
                     continue;
                 }
                 myprintf("Data frame\n");
@@ -296,6 +308,7 @@ void* R(void* arg)
                     if(sequence_number==shm[arr[i]].receivewindow.next_expected)
                     {
                         //for(int i=1;i<1024;i++)
+                        myprintf("Creating ack frame\n");
                         {
                             int index = arr[i];
                             for(int i=0;i<5;i++)
@@ -310,14 +323,14 @@ void* R(void* arg)
                             shm[arr[i]].receivewindow.next_expected++;
                             shm[arr[i]].receivewindow.next_expected%=16;
                             char sendbuf[1024];
-                            for(int i=0;i<1024;i++)sendbuf[i]=0;
-                            int bitmask;
+                            for(int j=0;j<1024;j++)sendbuf[j]=0;
+                            int bitmask=0;
                             bitmask+=1;
-                            for(int i=1;i<5;i++)
+                            for(int j=0;j<5;j++)
                             {
-                                if((sequence_number>>i)&1)
+                                if((sequence_number>>j)&1)
                                 {
-                                    bitmask+=1<<i;
+                                    bitmask+=1<<j;
                                 }
                             }
                             // if(shm[arr[i]].receivewindow.next_expected==shm[arr[i]].receivewindow.next_supplied)
@@ -350,6 +363,7 @@ void* R(void* arg)
                             {
                                 bitmask+=1<<5;
                             }
+                            bitmask += 1<<6;
                             sendbuf[0]=bitmask;
                             int emptyspace = 0;
                             if(shm[index].receivewindow.next_expected<shm[index].receivewindow.next_supplied)
@@ -367,6 +381,7 @@ void* R(void* arg)
                                 perror("sendto");
                             }
                             myprintf("Sent ack to %s:%d\n",shm[index].receiver_ip,shm[index].receiver_port);
+                            myprintf("Buffer[0]=%d\n",buffer[0]);
                         }
                     }
                 }
@@ -405,6 +420,7 @@ void* R(void* arg)
                             sendbuf[0]+=1<<(j+1);
                         }
                     }
+                    sendbuf[0]+=1<<6;
                     struct sockaddr_in cliaddr;
                     int clilen=sizeof(cliaddr);
                     cliaddr.sin_family = AF_INET;
@@ -416,7 +432,7 @@ void* R(void* arg)
                         perror("sendto");
                     }
                     shm[i].is_empty=0;
-                    myprintf("Sent ack to %s:%d\n",shm[i].receiver_ip,shm[i].receiver_port);
+                    myprintf("Sent ack to %s:%d to clear empty space\n",shm[i].receiver_ip,shm[i].receiver_port);
                 }
             }
         }
@@ -475,7 +491,7 @@ void* S(void* arg)
                                     }
                                     time_t t = time(NULL);
                                     shm[i].timers[j] = *(localtime(&t));
-                                    myprintf("Sent packet %d at time %d hours,%d seconds due to timeout\n",j,shm[i].timers[j].tm_hour,shm[i].timers[j].tm_sec);
+                                    myprintf("Sent packet %d at time %d hours,%d seconds due to timeout from %s:%d\n",j,shm[i].timers[j].tm_hour,shm[i].timers[j].tm_sec,shm[i].sender_ip,shm[i].sender_port);
                                     //shm[i].send_isfree[k]=1;
                                     break;
                                 }
@@ -520,7 +536,7 @@ void* S(void* arg)
                                 }
                                 time_t t = time(NULL);
                                 shm[i].timers[shm[i].sendwindow.mid] = *(localtime(&t));
-                                myprintf("Sent packet %d at time %d hours,%d seconds\n",shm[i].sendwindow.mid,shm[i].timers[shm[i].sendwindow.mid].tm_hour,shm[i].timers[shm[i].sendwindow.mid].tm_sec);
+                                myprintf("Sent packet %d at time %d hours,%d seconds from %s:%d\n",shm[i].sendwindow.mid,shm[i].timers[shm[i].sendwindow.mid].tm_hour,shm[i].timers[shm[i].sendwindow.mid].tm_sec,shm[i].sender_ip,shm[i].sender_port);
                                 //shm[i].send_isfree[j]=1;
                                 break;
                             }

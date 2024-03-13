@@ -23,7 +23,14 @@
 				   the P(s) operation */
 #define V(s) semop(s, &vop, 1)  /* vop is the structure we pass for doing
 				   the V(s) operation */
-
+int min(int a,int b)
+{
+    if(a<b)
+    {
+        return a;
+    }
+    return b;
+}
 int m_socket(int domain_name, int type, int protocol)
 {
     key_t key = ftok("init.c",64);
@@ -213,18 +220,22 @@ int m_sendto(int sockfd,char* buffer,int len,int flags,struct sockaddr_in cliadd
     if(shm[sockfd].free)
     {
         errno = ENOTBOUND;
+        myprintf("Free buffer\n");
         V(mutex);
         return -1;
     }
     if(shm[sockfd].pid!=getpid())
     {
         errno = EACCES;
+        myprintf("Not my process\n");
         V(mutex);
         return -1;
     }
     if(strcmp(shm[sockfd].receiver_ip,inet_ntoa(cliaddr.sin_addr))!=0||shm[sockfd].receiver_port!=ntohs(cliaddr.sin_port))
     {
         errno = ENOTBOUND;
+        myprintf("%s,%s,%d,%d\n",shm[sockfd].receiver_ip,inet_ntoa(cliaddr.sin_addr),shm[sockfd].receiver_port,ntohs(cliaddr.sin_port));
+        myprintf("Not bound to this address\n");
         V(mutex);
         return -1;
     }
@@ -258,7 +269,8 @@ int m_sendto(int sockfd,char* buffer,int len,int flags,struct sockaddr_in cliadd
             temp[0]+=1<<(i+1);
         }
     }
-    for(int i=0;i<len;i++)
+    temp[0]+=1<<6;
+    for(int i=0;i<=len;i++)
     {
         temp[i+1] = buffer[i];
     }
@@ -266,7 +278,78 @@ int m_sendto(int sockfd,char* buffer,int len,int flags,struct sockaddr_in cliadd
     V(mutex);
     return 0;
 }
+int m_recvfrom(int sockfd,char* buffer, int len, int flags, struct sockaddr_in* cliaddr, int * clilen)
+{
+    if(sockfd<0&&sockfd>=25)
+    {
+        errno = EINVAL;
+        return -1;
+    }
+    key_t key = ftok("init.c",64);
+    int shmid = shmget(key, sizeof(struct sh)*30, 0777|IPC_CREAT);
+    shm = (struct sh*)shmat(shmid, (void*)0, 0);
+    key_t key1 = ftok("init.c",64);
+    key_t key2 = ftok("init.c",65);
+    key_t key3 = ftok("init.c",66);
+    int mutex = semget(key1, 1, 0666|IPC_CREAT);
+    int main_wait = semget(key2, 1, 0666|IPC_CREAT);
+    int func_wait = semget(key3, 1, 0666|IPC_CREAT);
+    struct sembuf pop, vop ;
+    pop.sem_num = vop.sem_num = 0;
+	pop.sem_flg = vop.sem_flg = 0;
+	pop.sem_op = -1 ; vop.sem_op = 1 ;
+    P(mutex);
+    if(shm[sockfd].free)
+    {
+        errno = ENOTBOUND;
+        V(mutex);
+        return -1;
+    }
+    if(shm[sockfd].pid!=getpid())
+    {
+        errno = EACCES;
+        V(mutex);
+        return -1;
+    }
+    int index=-1;
+    for(int i=0;i<5;i++)
+    {
+        if((!shm[sockfd].recv_isfree[i]))
+        {
+            int temp_sequence_number=0;
+            for(int i=4;i>=1;i--)
+            {
+                if((shm[sockfd].recvbuf[i][0]>>i)&1)
+                {
+                    temp_sequence_number+=1<<(i-1);
+                }
+            }
+            if(temp_sequence_number==shm[sockfd].receivewindow.next_supplied)
+            {
+                index = i;
+                break;
+            }
+        }
+    }
+    if(index==-1)
+    {
+        errno = ENOMSG;
+        V(mutex);
+        return -1;
+    }
+    for(int i=0;i<min(len,1023);i++)
+    {
+        buffer[i] = shm[sockfd].recvbuf[index][i+1];
+    }
+    cliaddr->sin_family = AF_INET;
+    cliaddr->sin_port = htons(shm[sockfd].sender_port);
+    inet_pton(AF_INET,shm[sockfd].sender_ip,&cliaddr->sin_addr);
+    shm[sockfd].recv_isfree[index] = 1;
+    shm[sockfd].receivewindow.next_supplied = (shm[sockfd].receivewindow.next_supplied+1)%16;
+    V(mutex);
+    return 0;
 
+}
 int main()
 {
     int sockfd = m_socket(MTP_SOCKET, SOCK_MTP, 0);
@@ -282,4 +365,8 @@ int main()
     {
         perror("Error in sendto");
     }
+    sleep(120);
+    m_recvfrom(sockfd,buffer,1024,0,&cliaddr,&temp);
+    printf("%s\n",buffer);
+    return 0;
 }
