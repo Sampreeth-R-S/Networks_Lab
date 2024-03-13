@@ -5,3 +5,4 @@
 nospace was set but now there is space available in the receive buffer. In that case, it sends 
 a duplicate ACK message with the last acknowledged sequence number but with the updated 
 rwnd size, and resets the flag (there might be a problem here – try to find it out and resolve!): Problem: if the new ACK frame gets lost, sender will wait forever, solution: sender sends a special frame probing the receiver empty space
+5) Problems yet to resolve: R does not check if the socket has been bound before listening on it

@@ -122,6 +122,7 @@ int m_socket(int domain_name, int type, int protocol)
     if(SOCK_INFO->err_no)
     {
         errno = SOCK_INFO->err_no;
+        shm[index].free = 1;
         V(mutex);
         return -1;
     }
@@ -212,18 +213,22 @@ int m_sendto(int sockfd,char* buffer,int len,int flags,struct sockaddr_in cliadd
     if(shm[sockfd].free)
     {
         errno = ENOTBOUND;
+        myprintf("Free buffer\n");
         V(mutex);
         return -1;
     }
     if(shm[sockfd].pid!=getpid())
     {
         errno = EACCES;
+        myprintf("Not my process\n");
         V(mutex);
         return -1;
     }
     if(strcmp(shm[sockfd].receiver_ip,inet_ntoa(cliaddr.sin_addr))!=0||shm[sockfd].receiver_port!=ntohs(cliaddr.sin_port))
     {
         errno = ENOTBOUND;
+        myprintf("%s,%s,%d,%d\n",shm[sockfd].receiver_ip,inet_ntoa(cliaddr.sin_addr),shm[sockfd].receiver_port,ntohs(cliaddr.sin_port));
+        myprintf("Not bound to this address\n");
         V(mutex);
         return -1;
     }

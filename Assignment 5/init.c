@@ -23,7 +23,7 @@
 #else
     #define myprintf //
 #endif
-#define T 5
+#define T 1
 #define P(s) semop(s, &pop, 1)  /* pop is the structure we pass for doing
 				   the P(s) operation */
 #define V(s) semop(s, &vop, 1)  /* vop is the structure we pass for doing
@@ -93,12 +93,13 @@ void* R(void* arg)
                 FD_SET(shm[i].sockfd,&readfds);
                 if(shm[i].sockfd>maxfd)
                 {
-                    maxfd = i;
+                    maxfd = shm[i].sockfd;
                 }
-                arr[cur++]=shm[i].sockfd;
+                arr[cur++]=i;
             }
         }
         V(mutex);
+        myprintf("cur:%d\n",cur);
         if(maxfd==-1)
         {
             sleep(1);
@@ -162,14 +163,17 @@ void* R(void* arg)
         P(mutex);
         for(int i=0;i<cur;i++)
         {
+            myprintf("arr[%d]=%d\n",i,arr[i]);
             if(FD_ISSET(shm[arr[i]].sockfd,&readfds))
             {
                 char buffer[1024];
                 struct sockaddr_in cliaddr;
                 int clilen=sizeof(cliaddr);
                 int n = recvfrom(shm[arr[i]].sockfd,buffer,1024,0,(struct sockaddr *)&cliaddr,&clilen);
+                myprintf("Received packet from %s:%d\n",inet_ntoa(cliaddr.sin_addr),ntohs(cliaddr.sin_port));
                 if(n==0)
                 {
+                    printf("n=%d\n",n);
                     continue;
                 }
                 if(n<0)
@@ -180,6 +184,7 @@ void* R(void* arg)
                 int temp = buffer[0];
                 if(temp&1)
                 {
+                    myprintf("ACK frame");
                     char receiver_ip[16];
                     inet_ntop(cliaddr.sin_family,&cliaddr.sin_addr,receiver_ip,16);
                     int receiver_port = ntohs(cliaddr.sin_port);
@@ -264,24 +269,30 @@ void* R(void* arg)
                     }
                     continue;
                 }
+                myprintf("Data frame\n");
                 char receiver_ip[16];
                 inet_ntop(cliaddr.sin_family,&cliaddr.sin_addr,receiver_ip,16);
                 int receiver_port = ntohs(cliaddr.sin_port);
                 if(strcmp(receiver_ip,shm[arr[i]].receiver_ip)!=0)
                 {
+                    myprintf("Not my receiver\n");
+                    myprintf("%s,%s\n",receiver_ip,shm[arr[i]].receiver_ip);
                     continue;
                 }
                 if(receiver_port!=shm[arr[i]].receiver_port)
                 {
+                    myprintf("Not my port\n");
+                    myprintf("%d,%d\n",receiver_port,shm[arr[i]].receiver_port);
                     continue;
                 }
-                else 
+                myprintf("Processing ack frame\n");
                 {
                     int sequence_number = 0;
                     for(int i=4;i>=1;i--)
                     {
                         sequence_number=sequence_number*2+((temp>>i)&1);
                     }
+                    myprintf("Sequence Number of data frame received: %d\n",sequence_number);
                     if(sequence_number==shm[arr[i]].receivewindow.next_expected)
                     {
                         //for(int i=1;i<1024;i++)
