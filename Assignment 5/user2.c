@@ -34,8 +34,12 @@ int main()
     {
         perror("Error in sendto");
     }
-    sleep(60);
-    m_recvfrom(sockfd,buffer,1024,0,&cliaddr,&temp);
-    printf("user2: %s\n",buffer);
+    temp=-1;
+    //struct sockaddr_in cliaddr;
+    while(temp==-1)
+    {
+        temp = m_recvfrom(sockfd,buffer,1024,0,&cliaddr,&temp1);
+        sleep(1);
+    }
     return 0;
 }

@@ -198,7 +198,7 @@ int m_bind(int sockfd,char* sourceip, int sourceport, char* destinationip, int d
     P(mutex);
     if(shm[sockfd].free)
     {
-        errno = ENOTBOUND;
+        errno = ENOTCONN;
         V(mutex);
         return -1;
     }
@@ -254,7 +254,7 @@ int m_sendto(int sockfd,char* buffer,int len,int flags,struct sockaddr_in cliadd
     P(mutex);
     if(shm[sockfd].free)
     {
-        errno = ENOTBOUND;
+        errno = ENOTCONN;
         myprintf("Free buffer\n");
         V(mutex);
         return -1;
@@ -268,7 +268,7 @@ int m_sendto(int sockfd,char* buffer,int len,int flags,struct sockaddr_in cliadd
     }
     if(strcmp(shm[sockfd].receiver_ip,inet_ntoa(cliaddr.sin_addr))!=0||shm[sockfd].receiver_port!=ntohs(cliaddr.sin_port))
     {
-        errno = ENOTBOUND;
+        errno = ENOTCONN;
         myprintf("%s,%s,%d,%d\n",shm[sockfd].receiver_ip,inet_ntoa(cliaddr.sin_addr),shm[sockfd].receiver_port,ntohs(cliaddr.sin_port));
         myprintf("Not bound to this address\n");
         V(mutex);
@@ -338,7 +338,7 @@ int m_recvfrom(int sockfd,char* buffer, int len, int flags, struct sockaddr_in* 
     P(mutex);
     if(shm[sockfd].free)
     {
-        errno = ENOTBOUND;
+        errno = ENOTCONN;
         V(mutex);
         return -1;
     }
@@ -413,7 +413,7 @@ int m_close(int sockfd)
     P(mutex);
     if(shm[sockfd].free)
     {
-        errno = ENOTBOUND;
+        errno = ENOTCONN;
         V(mutex);
         return -1;
     }

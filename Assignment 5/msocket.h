@@ -2,9 +2,6 @@
 
 
 #define SOCK_MTP 100
-#define ENOTBOUND 134
-#define ENOMSG 135
-#define ENOBUFS 136
 #define MTP_SOCKET 300
 #ifdef DEBUG
     #define myprintf printf

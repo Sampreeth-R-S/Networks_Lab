@@ -35,5 +35,8 @@ int main()
     {
         perror("Error in sendto");
     }
-    sleep(60);
+    sleep(120);
+    m_close(sockfd);
+    sleep(30);
+    myprintf("User 1 exiting\n");
 }

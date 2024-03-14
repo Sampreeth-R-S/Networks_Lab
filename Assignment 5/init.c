@@ -26,7 +26,7 @@
     #define myprintf //
 #endif
 #define T 1
-const float P = 0.1;
+const float P = 0.5;
 #define P(s) semop(s, &pop, 1)  /* pop is the structure we pass for doing
 				   the P(s) operation */
 #define V(s) semop(s, &vop, 1)  /* vop is the structure we pass for doing
@@ -73,8 +73,9 @@ struct sh* shm;
 pthread_mutex_t shm_mutex = PTHREAD_MUTEX_INITIALIZER;
 int droppacket()
 {
-    srand(time(NULL));
+    
     float random = (float)rand()/(float)RAND_MAX;
+    myprintf("Random value generated %f\n",random);
     if(random<P)
     {
         return 1;
