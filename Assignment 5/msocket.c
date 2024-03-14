@@ -340,7 +340,9 @@ int m_recvfrom(int sockfd,char* buffer, int len, int flags, struct sockaddr_in* 
     for(int i=0;i<min(len,1023);i++)
     {
         buffer[i] = shm[sockfd].recvbuf[index][i+1];
+        myprintf("%c",buffer[i]);
     }
+    myprintf("\n");
     cliaddr->sin_family = AF_INET;
     cliaddr->sin_port = htons(shm[sockfd].sender_port);
     inet_pton(AF_INET,shm[sockfd].sender_ip,&cliaddr->sin_addr);
@@ -350,19 +352,42 @@ int m_recvfrom(int sockfd,char* buffer, int len, int flags, struct sockaddr_in* 
     return 0;
 
 }
-int main()
+
+int m_close(int sockfd)
 {
-    int sockfd = m_socket(MTP_SOCKET, SOCK_MTP, 0);
-    int temp = m_bind(sockfd,"127.0.0.1",8000,"127.0.0.1",8002);
-    char buffer[1024];
-    strcpy(buffer,"Hello");
-    struct sockaddr_in cliaddr;
-    cliaddr.sin_family = AF_INET;
-    cliaddr.sin_port = htons(8002);
-    inet_pton(AF_INET,"127.0.0.1",&cliaddr.sin_addr);
-    int temp1 = m_sendto(sockfd,buffer,5,0,cliaddr,sizeof(cliaddr));
-    if(temp1)
+    if(sockfd<0||sockfd>=25)
     {
-        perror("Error in sendto");
+        errno=EINVAL;
+        return -1;
     }
+    key_t key = ftok("init.c",64);
+    int shmid = shmget(key, sizeof(struct sh)*30, 0777|IPC_CREAT);
+    shm = (struct sh*)shmat(shmid, (void*)0, 0);
+    key_t key1 = ftok("init.c",64);
+    key_t key2 = ftok("init.c",65);
+    key_t key3 = ftok("init.c",66);
+    int mutex = semget(key1, 1, 0666|IPC_CREAT);
+    int main_wait = semget(key2, 1, 0666|IPC_CREAT);
+    int func_wait = semget(key3, 1, 0666|IPC_CREAT);
+    struct sembuf pop, vop ;
+    pop.sem_num = vop.sem_num = 0;
+	pop.sem_flg = vop.sem_flg = 0;
+	pop.sem_op = -1 ; vop.sem_op = 1 ;
+    P(mutex);
+    if(shm[sockfd].free)
+    {
+        errno = ENOTBOUND;
+        V(mutex);
+        return -1;
+    }
+    if(shm[sockfd].pid!=getpid())
+    {
+        errno = EACCES;
+        V(mutex);
+        return -1;
+    }
+    //shm[sockfd].free = 1;
+    shm[sockfd].marked_deletion = 1;
+    V(mutex);
+    return 0;
 }

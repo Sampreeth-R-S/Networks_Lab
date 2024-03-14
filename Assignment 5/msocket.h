@@ -23,7 +23,9 @@ struct sh{
     int next_write;
     int send_isfree[10];
     int recv_isfree[5];
+    //int seq_no_is_available[16];
     int is_empty;
+    int marked_deletion;
 };
 struct sockinfo{
     int sock_id;
@@ -43,4 +45,8 @@ struct sockinfo{
     #define myprintf //
 #endif
 int m_bind(int, char*, int, char*, int);
+int m_socket(int, int, int);
+int m_sendto(int,char*,int,int,struct sockaddr_in,int);
+int m_recvfrom(int sockfd,char* buffer, int len, int flags, struct sockaddr_in* cliaddr, int * clilen);
+int m_close(int);
 struct sh* shm;

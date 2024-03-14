@@ -19,23 +19,21 @@
 #include "msocket.h"
 #include <error.h>
 #include <errno.h>
+
 int main()
 {
     int sockfd = m_socket(MTP_SOCKET, SOCK_MTP, 0);
-    int temp = m_bind(sockfd,"127.0.0.1",8002,"127.0.0.1",8000);
+    int temp = m_bind(sockfd,"127.0.0.1",8000,"127.0.0.1",8002);
     char buffer[1024];
     strcpy(buffer,"Hello");
     struct sockaddr_in cliaddr;
     cliaddr.sin_family = AF_INET;
-    cliaddr.sin_port = htons(8000);
+    cliaddr.sin_port = htons(8002);
     inet_pton(AF_INET,"127.0.0.1",&cliaddr.sin_addr);
     int temp1 = m_sendto(sockfd,buffer,5,0,cliaddr,sizeof(cliaddr));
     if(temp1)
     {
         perror("Error in sendto");
     }
-    sleep(120);
-    m_recvfrom(sockfd,buffer,1024,0,&cliaddr,&temp);
-    printf("%s\n",buffer);
-    return 0;
+    sleep(200);
 }

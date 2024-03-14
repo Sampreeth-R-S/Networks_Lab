@@ -18,12 +18,15 @@
 #include <error.h>
 #include <errno.h>
 #include <sys/sem.h>
+#include <sys/types.h>
+#include <signal.h>
 #ifdef DEBUG
     #define myprintf printf
 #else
     #define myprintf //
 #endif
 #define T 1
+const float P = 0.1;
 #define P(s) semop(s, &pop, 1)  /* pop is the structure we pass for doing
 				   the P(s) operation */
 #define V(s) semop(s, &vop, 1)  /* vop is the structure we pass for doing
@@ -63,10 +66,57 @@ struct sh{
     int recv_isfree[5];
     //int seq_no_is_available[16];
     int is_empty;
+    int marked_deletion;
 };
 
 struct sh* shm;
 pthread_mutex_t shm_mutex = PTHREAD_MUTEX_INITIALIZER;
+int droppacket()
+{
+    srand(time(NULL));
+    float random = (float)rand()/(float)RAND_MAX;
+    if(random<P)
+    {
+        return 1;
+    }
+    return 0;
+}
+void *G(void* arg)
+{
+    key_t key1 = ftok("init.c",64);
+    int mutex = semget(key1, 1, 0666|IPC_CREAT);
+    struct sembuf pop, vop ;
+    pop.sem_num = vop.sem_num = 0;
+	pop.sem_flg = vop.sem_flg = 0;
+	pop.sem_op = -1 ; vop.sem_op = 1 ;
+    while(1)
+    {
+        P(mutex);
+        for(int i=0;i<25;i++)
+        {
+            if(!shm[i].free)
+            {
+                int pid = shm[i].pid;
+                if(kill(pid,0)==0)
+                {
+                    if(shm[i].marked_deletion)
+                    {
+                        myprintf("Socket at index %d marked for deletion\n",i);
+                        shm[i].free=1;
+                        close(shm[i].sockfd);
+                    }
+                    continue;
+                }
+                myprintf("Process with pid %d dead, freeing the socket\n",pid);
+                shm[i].free=1;
+                close(shm[i].sockfd);
+            }
+        }
+        V(mutex);
+        sleep(60);
+    }
+    
+}
 void* R(void* arg)
 {
     key_t key1 = ftok("init.c",64);
@@ -172,6 +222,11 @@ void* R(void* arg)
                 int clilen=sizeof(cliaddr);
                 int n = recvfrom(shm[arr[i]].sockfd,buffer,1024,0,(struct sockaddr *)&cliaddr,&clilen);
                 myprintf("Received packet from %s:%d\n",inet_ntoa(cliaddr.sin_addr),ntohs(cliaddr.sin_port));
+                if(droppacket())
+                {
+                    myprintf("Dropping packet\n");
+                    continue;
+                }
                 if(n==0)
                 {
                     printf("n=%d\n",n);
@@ -325,7 +380,8 @@ void* R(void* arg)
                             char sendbuf[1024];
                             for(int j=0;j<1024;j++)sendbuf[j]=0;
                             int bitmask=0;
-                            bitmask+=1;
+                            index = arr[i];
+                            bitmask += 1;
                             for(int j=0;j<5;j++)
                             {
                                 if((sequence_number>>j)&1)
@@ -383,6 +439,60 @@ void* R(void* arg)
                             myprintf("Sent ack to %s:%d\n",shm[index].receiver_ip,shm[index].receiver_port);
                             myprintf("Buffer[0]=%d\n",buffer[0]);
                         }
+                    }
+                    else
+                    {
+                        myprintf("Detected ACK loss, sending ACK again\n");
+                        int bitmask = 1;
+                        int index = arr[i];
+                        int previous_received = (shm[index].receivewindow.next_expected-1+16)%16;
+                        for(int j=0;j<4;j++)
+                        {
+                            if((previous_received>>j)&1)
+                            {
+                                bitmask+=1<<(j+1);
+                            }
+                        }
+                        int full = 0;
+                        index = arr[i];
+                        if(shm[index].receivewindow.next_expected>=shm[index].receivewindow.next_supplied)
+                        {
+                            if(shm[index].receivewindow.next_expected-shm[index].receivewindow.next_supplied>=5)
+                            {
+                                full = 1;
+                            }
+                        }
+                        else
+                        {
+                            if(shm[index].receivewindow.next_expected+16-shm[index].receivewindow.next_supplied>=5)
+                            {
+                                full = 1;
+                            }
+                        }
+                        if(full)
+                        {
+                            bitmask+=1<<5;
+                        }
+                        bitmask += 1<<6;
+                        char sendbuf[1024];
+                        for(int j=0;j<1024;j++)sendbuf[j]=0;
+                        sendbuf[0]=bitmask;
+                        int emptyspace = 0;
+                        if(shm[index].receivewindow.next_expected<shm[index].receivewindow.next_supplied)
+                        {
+                            emptyspace = 5-(shm[index].receivewindow.next_expected+16-shm[index].receivewindow.next_supplied);
+                        }
+                        else
+                        {
+                            emptyspace = 5-(shm[index].receivewindow.next_expected-shm[index].receivewindow.next_supplied);
+                        }
+                        sendbuf[1]=emptyspace;
+                        int n=sendto(shm[index].sockfd,sendbuf,strlen(sendbuf),0,(struct sockaddr *)&cliaddr,clilen);
+                        if(n<0)
+                        {
+                            perror("sendto");
+                        }
+                        myprintf("Sent ack to %s:%d with sequence number %d\n",shm[index].receiver_ip,shm[index].receiver_port,previous_received);
                     }
                 }
 
@@ -579,9 +689,10 @@ int main()
     {
         shm[i].free = 1;
     }
-    pthread_t t1,t2;
+    pthread_t t1,t2,t3;
     pthread_create(&t1,NULL,R,NULL);
     pthread_create(&t2,NULL,S,NULL);
+    pthread_create(&t3,NULL,G,NULL);
     struct sembuf pop, vop ;
     pop.sem_num = vop.sem_num = 0;
 	pop.sem_flg = vop.sem_flg = 0;
@@ -625,6 +736,7 @@ int main()
     }
     pthread_join(t1,NULL);
     pthread_join(t2,NULL);
+    pthread_join(t3,NULL);
     return 0;
     
 
