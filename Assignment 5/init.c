@@ -217,6 +217,10 @@ void* R(void* arg)
             myprintf("arr[%d]=%d\n",i,arr[i]);
             if(FD_ISSET(shm[arr[i]].sockfd,&readfds))
             {
+                if(shm[arr[i]].free)
+                {
+                    continue;
+                }
                 char buffer[1024];
                 struct sockaddr_in cliaddr;
                 int clilen=sizeof(cliaddr);
@@ -370,7 +374,12 @@ void* R(void* arg)
                             {
                                 if(shm[index].recv_isfree[i])
                                 {
-                                    strcpy(shm[index].recvbuf[i],buffer+1);
+                                    strcpy(shm[index].recvbuf[i],buffer);
+                                    for(int j=0;j<strlen(shm[index].recvbuf[i]);j++)
+                                    {
+                                        myprintf("%c",shm[index].recvbuf[i][j]);
+                                    }
+                                    myprintf("\n");
                                     shm[index].recv_isfree[i]=0;
                                     break;
                                 }
@@ -707,6 +716,7 @@ int main()
                 if(sockfd<0)
                 {
                     SOCK_INFO->err_no = errno;
+                    perror("Socket:");
                 }
                 else
                     SOCK_INFO->sock_id = sockfd;

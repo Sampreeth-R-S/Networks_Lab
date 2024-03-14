@@ -1,0 +1,65 @@
+Socket created
+Bind complete
+cur:1
+i=0, start=0,address = 1000000000
+Sent packet 0 at time 18 hours,26 seconds from 127.0.0.1:8000
+cur:1
+Socket created
+Bind complete
+i=0, start=0,address = 18
+i=1, start=0,address = 1000000000
+Sent packet 0 at time 18 hours,56 seconds from 127.0.0.1:8002
+arr[0]=0
+Received packet from 127.0.0.1:8002
+Data frame
+Processing ack frame
+Sequence Number of data frame received: 0
+Creating ack frame
+Sent ack to 127.0.0.1:8002
+Buffer[0]=64
+cur:2
+arr[0]=0
+arr[1]=1
+Received packet from 127.0.0.1:8000
+ACK frame
+ACK sequence number: 0
+Empty space set as 4
+cur:2
+i=0, start=0,address = 18
+Timeout detected
+Sent packet 0 at time 18 hours,26 seconds due to timeout from 127.0.0.1:8000
+i=1, start=1,address = 1000000000
+arr[0]=0
+arr[1]=1
+Received packet from 127.0.0.1:8000
+Data frame
+Processing ack frame
+Sequence Number of data frame received: 0
+Creating ack frame
+Sent ack to 127.0.0.1:8000
+Buffer[0]=64
+cur:2
+arr[0]=0
+Received packet from 127.0.0.1:8002
+ACK frame
+ACK sequence number: 0
+Empty space set as 4
+arr[1]=1
+cur:2
+i=0, start=1,address = 1000000000
+i=1, start=1,address = 16
+cur:2
+i=0, start=1,address = 16
+i=1, start=1,address = 16
+cur:2
+i=0, start=1,address = 16
+i=1, start=1,address = 16
+cur:2
+Process with pid 11879 dead, freeing the socket
+Process with pid 12034 dead, freeing the socket
+arr[0]=0
+Received packet from 127.0.0.1:8002
+Dropping packet
+arr[1]=1
+Received packet from 127.0.0.1:8002
+Dropping packet
