@@ -30,13 +30,11 @@ int main()
     cliaddr.sin_family = AF_INET;
     cliaddr.sin_port = htons(8002);
     inet_pton(AF_INET,"127.0.0.1",&cliaddr.sin_addr);
-    int temp1 = m_sendto(sockfd,buffer,strlen(buffer)+2,0,cliaddr,sizeof(cliaddr));
-    if(temp1)
+    for(int i=0;i<6;i++)
     {
-        perror("Error in sendto");
+        int temp=m_sendto(sockfd,buffer,strlen(buffer)+2,0,cliaddr,sizeof(cliaddr));
     }
-    sleep(120);
+    sleep(800);
     m_close(sockfd);
-    sleep(30);
-    myprintf("User 1 exiting\n");
+    exit(0);
 }

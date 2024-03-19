@@ -162,6 +162,7 @@ void* R(void* arg)
         int ret = select(maxfd+1,&readfds,NULL,NULL,&timeout);
         if(ret==0)
         {
+            P(mutex);
             for(int i=0;i<25;i++)
             {
                 if(shm[i].free)
@@ -210,6 +211,7 @@ void* R(void* arg)
                     }
                 }
             }
+            V(mutex);
             continue;
         }
         P(mutex);
@@ -243,6 +245,47 @@ void* R(void* arg)
                     continue;
                 }
                 int temp = buffer[0];
+                if((temp>>7)&1)
+                {
+                    int emptyspace=0;
+                    int index=i;
+                    if(shm[index].receivewindow.next_expected<shm[index].receivewindow.next_supplied)
+                    {
+                        emptyspace = 5-(shm[index].receivewindow.next_expected+16-shm[index].receivewindow.next_supplied);
+                    }
+                    else
+                    {
+                        emptyspace = 5-(shm[index].receivewindow.next_expected-shm[index].receivewindow.next_supplied);
+                    }
+                    if(emptyspace>0)
+                    {
+                        char sendbuf[1024];
+                        for(int i=0;i<1024;i++)sendbuf[i]=0;
+                        sendbuf[0]+=1;
+                        sendbuf[1]=emptyspace;
+                        int lastreceived = (shm[i].receivewindow.next_expected-1+16)%16;
+                        for(int j=0;j<4;j++)
+                        {
+                            if((lastreceived>>j)&1)
+                            {
+                                sendbuf[0]+=1<<(j+1);
+                            }
+                        }
+                        sendbuf[0]+=1<<6;
+                        struct sockaddr_in cliaddr;
+                        int clilen=sizeof(cliaddr);
+                        cliaddr.sin_family = AF_INET;
+                        cliaddr.sin_port = htons(shm[i].receiver_port);
+                        inet_pton(AF_INET,shm[i].receiver_ip,&cliaddr.sin_addr);
+                        int n=sendto(shm[i].sockfd,sendbuf,strlen(sendbuf),0,(struct sockaddr *)&cliaddr,clilen);
+                        if(n<0)
+                        {
+                            perror("sendto");
+                        }
+                        shm[i].is_empty=0;
+                        myprintf("Sent ack to %s:%d to clear empty space\n",shm[i].receiver_ip,shm[i].receiver_port);
+                    }
+                }
                 if(temp&1)
                 {
                     myprintf("ACK frame\n");
@@ -282,12 +325,13 @@ void* R(void* arg)
                                         int temp_sequence_number=0;
                                         for(int l=4;l>=1;l--)
                                         {
-                                            temp_sequence_number=temp_sequence_number*2+((shm[index].sendbuf[k][0])&1);
+                                            temp_sequence_number=temp_sequence_number*2+((shm[index].sendbuf[k][0]>>l)&1);
                                         }
                                         if(temp_sequence_number==j)
                                         {
                                             found = 1;
-                                            shm[index].send_isfree[k]=1;
+                                            shm[index].send_isfree[k] = 1;
+                                            myprintf("Freeing space at index %d from sendbuf with frame %d\n",k,temp_sequence_number);
                                             break;
                                         }
                                     }
@@ -311,12 +355,13 @@ void* R(void* arg)
                                         int temp_sequence_number=0;
                                         for(int l=4;l>=1;l--)
                                         {
-                                            temp_sequence_number=temp_sequence_number*2+((shm[index].sendbuf[k][0])&1);
+                                            temp_sequence_number=temp_sequence_number*2+((shm[index].sendbuf[k][0]>>l)&1);
                                         }
                                         if(temp_sequence_number==j)
                                         {
                                             found = 1;
                                             shm[index].send_isfree[k]=1;
+                                            myprintf("Freeing space at index %d from sendbuf with frame %d\n",k,temp_sequence_number);
                                             break;
                                         }
                                     }
@@ -338,7 +383,7 @@ void* R(void* arg)
                         int emptyspace = buffer[1];
                         shm[index].sendwindow.end = (shm[index].sendwindow.start+emptyspace)%16;
                     }
-                    myprintf("Empty space set as %d\n",buffer[1]);
+                    myprintf("Empty space set as %d,start = %d, end = %d\n",buffer[1],shm[index].sendwindow.start,shm[index].sendwindow.end);
                     continue;
                 }
                 myprintf("Data frame\n");
@@ -385,74 +430,109 @@ void* R(void* arg)
                                     break;
                                 }
                             }
-                            shm[arr[i]].receivewindow.next_expected++;
-                            shm[arr[i]].receivewindow.next_expected%=16;
-                            char sendbuf[1024];
-                            for(int j=0;j<1024;j++)sendbuf[j]=0;
-                            int bitmask=0;
-                            index = arr[i];
-                            bitmask += 1;
-                            for(int j=0;j<5;j++)
+                            // shm[arr[i]].receivewindow.next_expected++;
+                            // shm[arr[i]].receivewindow.next_expected%=16;
+                            while(1)
                             {
-                                if((sequence_number>>j)&1)
+                                int found=0;
+                                for(int j=0;j<5;j++)
                                 {
-                                    bitmask+=1<<j;
+                                    int temp_seq_number=0;
+                                    if(!shm[index].recv_isfree[j])
+                                    {
+                                        for(int k=4;k>=1;k--)
+                                        {
+                                            temp_seq_number=temp_seq_number*2+((shm[index].recvbuf[j][0]>>k)&1);
+                                        }
+                                        if(temp_seq_number==shm[index].receivewindow.next_expected)
+                                        {
+                                            found=1;
+                                            shm[index].receivewindow.next_expected++;
+                                            shm[index].receivewindow.next_expected%=16;
+                                            break;
+                                        }
+                                    }
+                                }
+                                if(!found)
+                                {
+                                    break;
                                 }
                             }
-                            // if(shm[arr[i]].receivewindow.next_expected==shm[arr[i]].receivewindow.next_supplied)
-                            // {
-                            //     bitmask+=1<<5;
-                            // }
-                            // sendbuf[0]=bitmask;
-                            // int n=sendto(shm[arr[i]].sockfd,sendbuf,1024,0,(struct sockaddr *)&cliaddr,clilen);
-                            // if(n<0)
-                            // {
-                            //     perror("sendto");
-                            // }
-                            int full = 0;
-                            index = arr[i];
-                            if(shm[index].receivewindow.next_expected>=shm[index].receivewindow.next_supplied)
+                            while(sequence_number!=shm[index].receivewindow.next_expected)
                             {
-                                if(shm[index].receivewindow.next_expected-shm[index].receivewindow.next_supplied>=5)
+                                char sendbuf[1024];
+                                for(int j=0;j<1024;j++)sendbuf[j]=0;
+                                int bitmask=0;
+                                index = arr[i];
+                                bitmask += 1;
+                                for(int j=0;j<5;j++)
                                 {
-                                    full = 1;
+                                    if((sequence_number>>j)&1)
+                                    {
+                                        bitmask+=1<<(j+1);
+                                    }
                                 }
-                            }
-                            else
-                            {
-                                if(shm[index].receivewindow.next_expected+16-shm[index].receivewindow.next_supplied>=5)
+                                // if(shm[arr[i]].receivewindow.next_expected==shm[arr[i]].receivewindow.next_supplied)
+                                // {
+                                //     bitmask+=1<<5;
+                                // }
+                                // sendbuf[0]=bitmask;
+                                // int n=sendto(shm[arr[i]].sockfd,sendbuf,1024,0,(struct sockaddr *)&cliaddr,clilen);
+                                // if(n<0)
+                                // {
+                                //     perror("sendto");
+                                // }
+                                int full = 0;
+                                index = arr[i];
+                                if(shm[index].receivewindow.next_expected>=shm[index].receivewindow.next_supplied)
                                 {
-                                    full = 1;
+                                    if(shm[index].receivewindow.next_expected-shm[index].receivewindow.next_supplied>=5)
+                                    {
+                                        full = 1;
+                                    }
                                 }
+                                else
+                                {
+                                    if(shm[index].receivewindow.next_expected+16-shm[index].receivewindow.next_supplied>=5)
+                                    {
+                                        full = 1;
+                                    }
+                                }
+                                if(full)
+                                {
+                                    bitmask+=1<<5;
+                                }
+                                bitmask += 1<<6;
+                                sendbuf[0]=bitmask;
+                                int emptyspace = 0;
+                                if(shm[index].receivewindow.next_expected<shm[index].receivewindow.next_supplied)
+                                {
+                                    emptyspace = 5-(shm[index].receivewindow.next_expected+16-shm[index].receivewindow.next_supplied);
+                                }
+                                else
+                                {
+                                    emptyspace = 5-(shm[index].receivewindow.next_expected-shm[index].receivewindow.next_supplied);
+                                }
+                                sendbuf[1]=emptyspace;
+                                if(emptyspace==0)
+                                {
+                                    shm[index].is_empty=1;
+                                }
+                                int n=sendto(shm[index].sockfd,sendbuf,strlen(sendbuf)+2,0,(struct sockaddr *)&cliaddr,clilen);
+                                if(n<0)
+                                {
+                                    perror("sendto");
+                                }
+                                myprintf("Sent ack to %s:%d\n",shm[index].receiver_ip,shm[index].receiver_port);
+                                myprintf("Buffer[0]=%d,buffer[1]=%d\n",sendbuf[0],sendbuf[1]);
+                                sequence_number++;
+                                sequence_number%=16;
                             }
-                            if(full)
-                            {
-                                bitmask+=1<<5;
-                            }
-                            bitmask += 1<<6;
-                            sendbuf[0]=bitmask;
-                            int emptyspace = 0;
-                            if(shm[index].receivewindow.next_expected<shm[index].receivewindow.next_supplied)
-                            {
-                                emptyspace = 5-(shm[index].receivewindow.next_expected+16-shm[index].receivewindow.next_supplied);
-                            }
-                            else
-                            {
-                                emptyspace = 5-(shm[index].receivewindow.next_expected-shm[index].receivewindow.next_supplied);
-                            }
-                            sendbuf[1]=emptyspace;
-                            int n=sendto(shm[index].sockfd,sendbuf,strlen(sendbuf),0,(struct sockaddr *)&cliaddr,clilen);
-                            if(n<0)
-                            {
-                                perror("sendto");
-                            }
-                            myprintf("Sent ack to %s:%d\n",shm[index].receiver_ip,shm[index].receiver_port);
-                            myprintf("Buffer[0]=%d\n",buffer[0]);
                         }
                     }
                     else
                     {
-                        myprintf("Detected ACK loss, sending ACK again\n");
+                        myprintf("Detected out of order frame, sending ACK again\n");
                         int bitmask = 1;
                         int index = arr[i];
                         int previous_received = (shm[index].receivewindow.next_expected-1+16)%16;
@@ -497,12 +577,51 @@ void* R(void* arg)
                             emptyspace = 5-(shm[index].receivewindow.next_expected-shm[index].receivewindow.next_supplied);
                         }
                         sendbuf[1]=emptyspace;
-                        int n=sendto(shm[index].sockfd,sendbuf,strlen(sendbuf),0,(struct sockaddr *)&cliaddr,clilen);
+                        if(emptyspace==0)
+                        {
+                            shm[index].is_empty=1;
+                        }
+                        int n=sendto(shm[index].sockfd,sendbuf,strlen(sendbuf)+2,0,(struct sockaddr *)&cliaddr,clilen);
                         if(n<0)
                         {
                             perror("sendto");
                         }
                         myprintf("Sent ack to %s:%d with sequence number %d\n",shm[index].receiver_ip,shm[index].receiver_port,previous_received);
+                        int temp = previous_received;
+                        int found=0;
+                        while(emptyspace)
+                        {
+                            emptyspace--;
+                            previous_received++;
+                            previous_received%=16;
+                            if(previous_received==sequence_number)
+                            {
+                                myprintf("Storing out of order frame\n");
+                                for(int k=0;k<5;k++)
+                                {
+                                    if(shm[index].recv_isfree[k])
+                                    {
+                                        strcpy(shm[index].recvbuf[k],buffer);
+                                        shm[index].recv_isfree[k]=0;
+                                        found=1;
+                                        break;
+                                        // strcpy(shm[index].recvbuf[i],buffer);
+                                        // for(int j=0;j<strlen(shm[index].recvbuf[i]);j++)
+                                        // {
+                                        //     myprintf("%c",shm[index].recvbuf[i][j]);
+                                        // }
+                                        // myprintf("\n");
+                                        // shm[index].recv_isfree[i]=0;
+                                        // break;
+                                    }
+                                }
+                            }
+
+                        }
+                        if(!found)
+                        {
+                            myprintf("Discarding out of order frame\n");
+                        }
                     }
                 }
 
@@ -594,7 +713,7 @@ void* S(void* arg)
                                 int sequence_number=0;
                                 for(int l=4;l>=1;l--)
                                 {
-                                    sequence_number=sequence_number*2+((shm[i].sendbuf[k][0])&1);
+                                    sequence_number=sequence_number*2+((shm[i].sendbuf[k][0]>>l)&1);
                                 }
                                 if(sequence_number==j)
                                 {
@@ -637,10 +756,12 @@ void* S(void* arg)
                         if(!shm[i].send_isfree[j])
                         {
                             int sequence_number=0;
-                            for(int i=4;i>=1;i--)
+
+                            for(int k=4;k>=1;k--)
                             {
-                                sequence_number=sequence_number*2+((shm[i].sendbuf[j][0])&1);
+                               sequence_number=sequence_number*2+((shm[i].sendbuf[j][0]>>k)&1);
                             }
+                            myprintf("Found frame %d at index %d\n",sequence_number,j);
                             if(sequence_number==shm[i].sendwindow.mid)
                             {
                                 found = 1;
@@ -668,6 +789,32 @@ void* S(void* arg)
                     }
                     shm[i].sendwindow.mid++;
                     shm[i].sendwindow.mid%=16;
+                }
+            }
+        }
+        for(int i=0;i<25;i++)
+        {
+            if(!shm[i].free)
+            {
+                if(shm[i].sendwindow.start==shm[i].sendwindow.end)
+                {
+                    char sendbuf[10];
+                    for(int i=0;i<10;i++)
+                    {
+                        sendbuf[i]=0;
+                    }
+                    sendbuf[0]=(1<<7);
+                    struct sockaddr_in cliaddr;
+                    int clilen=sizeof(cliaddr);
+                    cliaddr.sin_family = AF_INET;
+                    cliaddr.sin_port = htons(shm[i].receiver_port);
+                    inet_pton(AF_INET,shm[i].receiver_ip,&cliaddr.sin_addr);
+                    int n=sendto(shm[i].sockfd,sendbuf,strlen(sendbuf),0,(struct sockaddr *)&cliaddr,clilen);
+                    if(n<0)
+                    {
+                        perror("sendto");
+                    }
+                    myprintf("Sent special frame to check for emptyspace for sender %d\n",i);
                 }
             }
         }
@@ -734,6 +881,7 @@ int main()
                 {
                     SOCK_INFO->err_no = errno;
                     myprintf("Bind failed\n");
+                    perror("");
                 }
                 else
                 {

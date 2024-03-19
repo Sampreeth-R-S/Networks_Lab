@@ -17,14 +17,14 @@ libmsocket.a:
 debug_user: debug_lib
 	gcc -g -fsanitize=address -pthread -o user1 user1.c -L. -lmsocket -DDEBUG
 	gcc -g -fsanitize=address -pthread -o user2 user2.c -L. -lmsocket -DDEBUG
-	./user1 &
-	./user2 &
+	xterm ./user1 &
+	xterm ./user2 &
 
 user: libmsocket.a
 	gcc -pthread -o user1 user1.c -L. -lmsocket
 	gcc -pthread -o user2 user2.c -L. -lmsocket
-	./user1 &
-	./user2 &
+	xterm ./user1 &
+	xterm ./user2 &
 
 clean:
-	rm -f *.o *.a init user1 user2
+	rm -f *.o *.a init user1 user2 

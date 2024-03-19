@@ -34,12 +34,16 @@ int main()
     {
         perror("Error in sendto");
     }
-    temp=-1;
-    //struct sockaddr_in cliaddr;
-    while(temp==-1)
+    for(int i=0;i<6;i++)
     {
-        temp = m_recvfrom(sockfd,buffer,1024,0,&cliaddr,&temp1);
-        sleep(1);
+        temp=-1;
+        //struct sockaddr_in cliaddr;
+        while(temp==-1)
+        {
+            temp = m_recvfrom(sockfd,buffer,1024,0,&cliaddr,&temp1);
+            sleep(1);
+        }
+        printf("Message received: %s\n",buffer);
     }
     return 0;
 }

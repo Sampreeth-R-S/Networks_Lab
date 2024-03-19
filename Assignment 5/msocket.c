@@ -142,6 +142,7 @@ int m_socket(int domain_name, int type, int protocol)
         shm[index].sendwindow.start = shm[index].sendwindow.mid  = shm[index].sendwindow.next_seq_no = 0;
         shm[index].sendwindow.end = 5;
         shm[index].receivewindow.next_expected = shm[index].receivewindow.next_supplied = 0;
+        shm[index].marked_deletion=0;
         for(int j=0;j<10;j++)
         {
             shm[index].send_isfree[j] = 1;
@@ -308,10 +309,11 @@ int m_sendto(int sockfd,char* buffer,int len,int flags,struct sockaddr_in cliadd
     for(int i=0;i<len;i++)
     {
         temp[i+1] = buffer[i];
-        myprintf("%c",temp[i+1]);
+        //myprintf("%c",temp[i+1]);
     }
-    myprintf("\n");
+    //myprintf("\n");
     strcpy(shm[sockfd].sendbuf[index],temp);
+    myprintf("Inserted frame %d at index %d, buf[0]=%d\n",sequence_number,index,temp[0]);
     V(mutex);
     return 0;
 }
@@ -354,13 +356,14 @@ int m_recvfrom(int sockfd,char* buffer, int len, int flags, struct sockaddr_in* 
         if((!shm[sockfd].recv_isfree[i]))
         {
             int temp_sequence_number=0;
-            for(int i=4;i>=1;i--)
+            for(int k=4;k>=1;k--)
             {
-                if((shm[sockfd].recvbuf[i][0]>>i)&1)
+                if((shm[sockfd].recvbuf[i][0]>>k)&1)
                 {
-                    temp_sequence_number+=1<<(i-1);
+                    temp_sequence_number+=1<<(k-1);
                 }
             }
+            myprintf("Found frame %d at index %d, buf[0]=%d\n",temp_sequence_number,i,shm[sockfd].recvbuf[i][0]);
             if(temp_sequence_number==shm[sockfd].receivewindow.next_supplied)
             {
                 index = i;
