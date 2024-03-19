@@ -25,7 +25,7 @@
 #else
     #define myprintf //
 #endif
-#define T 1
+#define T 5
 const float P = 0.5;
 #define P(s) semop(s, &pop, 1)  /* pop is the structure we pass for doing
 				   the P(s) operation */
