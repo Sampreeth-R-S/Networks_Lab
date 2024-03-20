@@ -26,12 +26,12 @@
     #define myprintf //
 #endif
 #define T 1
-const float P = 0.7;
+const float P = 0.8;
 #define P(s) semop(s, &pop, 1)  /* pop is the structure we pass for doing
 				   the P(s) operation */
 #define V(s) semop(s, &vop, 1)  /* vop is the structure we pass for doing
 				   the V(s) operation */
-
+int retransmissions=0;
 
 struct sockinfo{
     int sock_id;
@@ -129,6 +129,7 @@ void* R(void* arg)
     while(1)
     {
         fd_set readfds;
+        FD_ZERO(&readfds);
         int arr[25];
         for(int i=0;i<25;i++)
         {
@@ -159,9 +160,12 @@ void* R(void* arg)
         struct timeval timeout;
         timeout.tv_sec = 30;
         timeout.tv_usec = 0;
+        myprintf("Going to wait on select, maxfd=%d\n",maxfd);
         int ret = select(maxfd+1,&readfds,NULL,NULL,&timeout);
+        myprintf("Returned from select\n");
         if(ret==0)
         {
+            myprintf("Returned from select with timeout\n");
             P(mutex);
             for(int i=0;i<25;i++)
             {
@@ -227,7 +231,13 @@ void* R(void* arg)
                 char buffer[1024];
                 struct sockaddr_in cliaddr;
                 int clilen=sizeof(cliaddr);
+                myprintf("Calling recvfrom,shm[arr[i]].sockfd=%d\n",shm[arr[i]].sockfd);
                 int n = recvfrom(shm[arr[i]].sockfd,buffer,1024,0,(struct sockaddr *)&cliaddr,&clilen);
+                if(n<0)
+                {
+                    perror("recvfrom:");
+                    continue;
+                }
                 myprintf("Received packet from %s:%d\n",inet_ntoa(cliaddr.sin_addr),ntohs(cliaddr.sin_port));
                 if(droppacket())
                 {

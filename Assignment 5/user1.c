@@ -32,9 +32,18 @@ int main()
     inet_pton(AF_INET,"127.0.0.1",&cliaddr.sin_addr);
     for(int i=0;i<10;i++)
     {
+        char buffer[1024];
+        sprintf(buffer,"Frame %d",i);
         int temp=m_sendto(sockfd,buffer,strlen(buffer)+2,0,cliaddr,sizeof(cliaddr));
     }
-    sleep(800);
+    sleep(1000);
+    for(int i=0;i<10;i++)
+    {
+        char buffer[1024];
+        sprintf(buffer,"Frame %d",i);
+        int temp=m_sendto(sockfd,buffer,strlen(buffer)+2,0,cliaddr,sizeof(cliaddr));
+    }
+    sleep(1000);
     m_close(sockfd);
     exit(0);
 }
