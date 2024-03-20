@@ -25,8 +25,8 @@
 #else
     #define myprintf //
 #endif
-#define T 5
-const float P = 0.5;
+#define T 1
+const float P = 0.7;
 #define P(s) semop(s, &pop, 1)  /* pop is the structure we pass for doing
 				   the P(s) operation */
 #define V(s) semop(s, &vop, 1)  /* vop is the structure we pass for doing
@@ -285,6 +285,7 @@ void* R(void* arg)
                         shm[i].is_empty=0;
                         myprintf("Sent ack to %s:%d to clear empty space\n",shm[i].receiver_ip,shm[i].receiver_port);
                     }
+                    continue;
                 }
                 if(temp&1)
                 {
@@ -587,13 +588,31 @@ void* R(void* arg)
                             perror("sendto");
                         }
                         myprintf("Sent ack to %s:%d with sequence number %d\n",shm[index].receiver_ip,shm[index].receiver_port,previous_received);
-                        int temp = previous_received;
+                        previous_received = shm[index].receivewindow.next_expected;
                         int found=0;
-                        while(emptyspace)
+                        for(int l=0;l<5;l++)
+                        {
+                            if(!shm[index].recv_isfree[l])
+                            {
+                                int temp_sequence = 0;
+                                for(int m=4;m>=1;m--)
+                                {
+                                    if((shm[index].recvbuf[l][0]>>m)&1)
+                                    {
+                                        temp_sequence+=1<<(m-1);
+                                    }
+                                }
+                                printf("Found frame %d at index %d, sequence number=%d\n",temp_sequence,l,sequence_number);
+                                if(temp_sequence==sequence_number)
+                                {
+                                    found=1;
+                                    break;
+                                }
+                            }
+                        }
+                        while(emptyspace&&!found)
                         {
                             emptyspace--;
-                            previous_received++;
-                            previous_received%=16;
                             if(previous_received==sequence_number)
                             {
                                 myprintf("Storing out of order frame\n");
@@ -616,6 +635,8 @@ void* R(void* arg)
                                     }
                                 }
                             }
+                            previous_received++;
+                            previous_received%=16;
 
                         }
                         if(!found)

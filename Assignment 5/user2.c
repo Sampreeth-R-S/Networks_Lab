@@ -34,7 +34,7 @@ int main()
     {
         perror("Error in sendto");
     }
-    for(int i=0;i<6;i++)
+    for(int i=0;i<10;i++)
     {
         temp=-1;
         //struct sockaddr_in cliaddr;

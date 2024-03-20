@@ -30,7 +30,7 @@ int main()
     cliaddr.sin_family = AF_INET;
     cliaddr.sin_port = htons(8002);
     inet_pton(AF_INET,"127.0.0.1",&cliaddr.sin_addr);
-    for(int i=0;i<6;i++)
+    for(int i=0;i<10;i++)
     {
         int temp=m_sendto(sockfd,buffer,strlen(buffer)+2,0,cliaddr,sizeof(cliaddr));
     }
