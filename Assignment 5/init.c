@@ -67,6 +67,7 @@ struct sh{
     //int seq_no_is_available[16];
     int is_empty;
     int marked_deletion;
+    int is_bound;
 };
 
 struct sh* shm;

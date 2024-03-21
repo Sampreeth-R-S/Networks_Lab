@@ -46,6 +46,7 @@ struct sh{
     //int seq_no_is_available[16];
     int is_empty;
     int marked_deletion;
+    int is_bound;
 };
 struct sockinfo{
     int sock_id;
@@ -143,6 +144,7 @@ int m_socket(int domain_name, int type, int protocol)
         shm[index].sendwindow.end = 5;
         shm[index].receivewindow.next_expected = shm[index].receivewindow.next_supplied = 0;
         shm[index].marked_deletion=0;
+        shm[index].is_bound=0;
         for(int j=0;j<10;j++)
         {
             shm[index].send_isfree[j] = 1;
@@ -228,6 +230,7 @@ int m_bind(int sockfd,char* sourceip, int sourceport, char* destinationip, int d
     strcpy(shm[sockfd].receiver_ip,destinationip);
     shm[sockfd].sender_port = sourceport;
     strcpy(shm[sockfd].sender_ip,sourceip);
+    shm[sockfd].is_bound = 1;
     V(mutex);
     myprintf("Bind complete\n");
     return 0;
@@ -264,6 +267,13 @@ int m_sendto(int sockfd,char* buffer,int len,int flags,struct sockaddr_in cliadd
     {
         errno = EACCES;
         myprintf("Not my process\n");
+        V(mutex);
+        return -1;
+    }
+    if(shm[sockfd].is_bound==0)
+    {
+        errno = ENOTCONN;
+        myprintf("Not bound\n");
         V(mutex);
         return -1;
     }
@@ -347,6 +357,12 @@ int m_recvfrom(int sockfd,char* buffer, int len, int flags, struct sockaddr_in* 
     if(shm[sockfd].pid!=getpid())
     {
         errno = EACCES;
+        V(mutex);
+        return -1;
+    }
+    if(shm[sockfd].is_bound==0)
+    {
+        errno = ENOTCONN;
         V(mutex);
         return -1;
     }
