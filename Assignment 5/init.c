@@ -26,7 +26,7 @@
     #define myprintf //
 #endif
 #define T 5
-const float P = 0.8;
+const float P = 0.1;
 #define P(s) semop(s, &pop, 1)  /* pop is the structure we pass for doing
 				   the P(s) operation */
 #define V(s) semop(s, &vop, 1)  /* vop is the structure we pass for doing
@@ -613,7 +613,7 @@ void* R(void* arg)
                                         temp_sequence+=1<<(m-1);
                                     }
                                 }
-                                printf("Found frame %d at index %d, sequence number=%d\n",temp_sequence,l,sequence_number);
+                                myprintf("Found frame %d at index %d, sequence number=%d\n",temp_sequence,l,sequence_number);
                                 if(temp_sequence==sequence_number)
                                 {
                                     found=1;

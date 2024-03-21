@@ -25,6 +25,7 @@ int main()
     int sockfd = m_socket(MTP_SOCKET, SOCK_MTP, 0);
     int temp = m_bind(sockfd,"127.0.0.1",8001,"127.0.0.1",8004);
     char buffer[1024];
+    for(int i=0;i<1024;i++)buffer[i]=0;
     strcpy(buffer,"Hello");
     struct sockaddr_in cliaddr;
     cliaddr.sin_family = AF_INET;
@@ -34,7 +35,7 @@ int main()
     {
         int temp=m_sendto(sockfd,buffer,strlen(buffer)+2,0,cliaddr,sizeof(cliaddr));
     }
-    sleep(800);
+    sleep(100);
     m_close(sockfd);
     exit(0);
 }

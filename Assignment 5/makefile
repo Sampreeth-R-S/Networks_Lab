@@ -1,30 +1,24 @@
-debug_init:
-	gcc -g -fsanitize=address -pthread -o init init.c -DDEBUG
+init: init.c
+	gcc -o init -pthread init.c
 	./init
-
-init:
-	gcc -pthread -o init init.c
-	./init
-
-debug_lib:
-	gcc -c -o msocket.o msocket.c -DDEBUG -g -fsanitize=address
-	ar rcs libmsocket.a msocket.o
-
-libmsocket.a:
+lib: msocket.c
 	gcc -c -o msocket.o msocket.c
 	ar rcs libmsocket.a msocket.o
+user1: user1.c lib
+	gcc -o user1 -pthread user1.c -L. -lmsocket
+user2: user2.c lib
+	gcc -o user2 -pthread user2.c -L. -lmsocket
+user3: user3.c lib
+	gcc -o user3 -pthread user3.c -L. -lmsocket
+user4: user4.c lib
+	gcc -o user4 -pthread user4.c -L. -lmsocket
 
-debug_user: debug_lib
-	gcc -g -fsanitize=address -pthread -o user1 user1.c -L. -lmsocket -DDEBUG
-	gcc -g -fsanitize=address -pthread -o user2 user2.c -L. -lmsocket -DDEBUG
-	xterm ./user1 &
-	xterm ./user2 &
+run: user1 user2
+	./user1 &
+	./user2
 
-user: libmsocket.a
-	gcc -pthread -o user1 user1.c -L. -lmsocket
-	gcc -pthread -o user2 user2.c -L. -lmsocket
-	xterm ./user1 &
-	xterm ./user2 &
-
+run2: user3 user4
+	./user3 &
+	./user4
 clean:
-	rm -f *.o *.a init user1 user2 
+	rm -f *.o *.a init user1 user2 *.out

@@ -36,14 +36,14 @@ int main()
         sprintf(buffer,"Frame %d",i);
         int temp=m_sendto(sockfd,buffer,strlen(buffer)+2,0,cliaddr,sizeof(cliaddr));
     }
-    sleep(1000);
+    sleep(100);
     for(int i=0;i<10;i++)
     {
         char buffer[1024];
         sprintf(buffer,"Frame %d",i);
         int temp=m_sendto(sockfd,buffer,strlen(buffer)+2,0,cliaddr,sizeof(cliaddr));
     }
-    sleep(1000);
+    sleep(100);
     m_close(sockfd);
     exit(0);
 }
