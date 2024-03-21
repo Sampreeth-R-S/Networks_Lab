@@ -25,7 +25,7 @@
 #else
     #define myprintf //
 #endif
-#define T 1
+#define T 5
 const float P = 0.8;
 #define P(s) semop(s, &pop, 1)  /* pop is the structure we pass for doing
 				   the P(s) operation */
@@ -732,7 +732,7 @@ void* S(void* arg)
                 time(&currentTime);
                 myprintf("i=%d, start=%d,address = %d\n",i,shm[i].sendwindow.start,shm[i].timers[shm[i].sendwindow.start].tm_hour);
                 double time_difference = difftime(currentTime,mktime(&shm[i].timers[shm[i].sendwindow.start]));
-                if(time_difference>=T*60)
+                if(time_difference>=T)
                 {
                     myprintf("Timeout detected\n");
                     for(int j=shm[i].sendwindow.start;j!=shm[i].sendwindow.mid;j=(j+1)%16)
@@ -851,7 +851,7 @@ void* S(void* arg)
             }
         }
         V(mutex);
-        sleep((T*60)/2);
+        sleep((T)/2);
     }
 }
 int main()
