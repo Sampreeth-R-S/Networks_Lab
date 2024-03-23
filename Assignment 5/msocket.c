@@ -300,6 +300,7 @@ int m_sendto(int sockfd,char* buffer,int len,int flags,struct sockaddr_in cliadd
     if(index==-1)
     {
         errno = ENOBUFS;
+        shm[sockfd].sendwindow.next_seq_no = (shm[sockfd].sendwindow.next_seq_no-1+16)%16;
         V(mutex);
         return -1;
     }
