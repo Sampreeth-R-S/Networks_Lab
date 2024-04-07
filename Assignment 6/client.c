@@ -138,7 +138,23 @@ int send_query(int sockfd, simDNS_QueryPacket *packet, size_t packet_size) {
 }
 
 void AppendData(unsigned char *packet, simDNS_QueryPacket *query_packet) {
+int offset = sizeof(struct ethhdr) + sizeof(struct iphdr);
+    uint8_t *ptr = packet + offset;
 
+    // Append query packet fields
+    *(uint16_t *)ptr = htons(query_packet->id); // ID
+    ptr += 2;
+    *ptr = (query_packet->message_type & 0x01) << 7; // Message Type
+    *ptr |= query_packet->num_queries & 0x07; // Number of queries
+    ptr++;
+
+    // Append query strings
+    for (int i = 0; i < query_packet->num_queries; i++) {
+        *ptr = query_packet->queries[i].size; // Size of domain name
+        ptr++;
+        memcpy(ptr, query_packet->queries[i].domain, query_packet->queries[i].size); // Domain name
+        ptr += query_packet->queries[i].size;
+    }
 
 }
 
