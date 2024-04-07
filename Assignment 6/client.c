@@ -13,7 +13,9 @@
 #include <linux/ip.h>
 #include <linux/if_ether.h>
 #include <bits/ioctls.h>
-
+#include <stdio.h>
+#include <time.h>
+#include <sys/select.h>
 #define MAX_DOMAIN_SIZE 32
 #define MAX_QUERIES 8
 
@@ -26,6 +28,16 @@ typedef struct {
         char domain[MAX_DOMAIN_SIZE];
     } queries[MAX_QUERIES];
 } simDNS_QueryPacket;
+
+typedef struct{
+    uint16_t id;
+    uint8_t message_type;
+    uint8_t num_queries;
+    struct {
+        uint8_t valid;
+        char ip[MAX_DOMAIN_SIZE];
+    } queries[MAX_QUERIES];
+} simDNS_ResponsePacket;
 void AppendEthernetHeader(unsigned char *packet)
 {
     struct ethhdr *eth = (struct ethhdr *)packet;
@@ -66,6 +78,8 @@ void AppendIPHeader(unsigned char *packet)
     ip->ttl = 255;
     ip->protocol = 254;
     ip->check = 0;
+    ip->saddr = inet_addr("10.145.104.35");
+    ip->daddr = inet_addr("10.145.104.35");
     ip->saddr = inet_addr("10.145.104.35");
     ip->daddr = inet_addr("10.145.104.35");
 
@@ -148,6 +162,7 @@ int get_interface_index(char interface_name[IFNAMSIZ], int sockfd)
 }
 
 int send_query(int sockfd, char *packet, size_t packet_size) {
+int send_query(int sockfd, char *packet, size_t packet_size) {
     struct sockaddr_ll dest;
     char name[16];
     strcpy(name, "enp0s3");
@@ -165,6 +180,7 @@ int send_query(int sockfd, char *packet, size_t packet_size) {
 }
 
 void AppendData(unsigned char *packet, simDNS_QueryPacket *query_packet) {
+    int offset = sizeof(struct ethhdr) + sizeof(struct iphdr);
     int offset = sizeof(struct ethhdr) + sizeof(struct iphdr);
     uint8_t *ptr = packet + offset;
 
@@ -200,31 +216,29 @@ int main() {
     struct sockaddr_ll sll;
     struct ifreq ifr;
 
-    bzero(&sll, sizeof(sll));
-    bzero(&ifr, sizeof(ifr));
+        bzero(&sll, sizeof(sll));
+        bzero(&ifr, sizeof(ifr));
 
     strcpy((char *)ifr.ifr_name, "enp0s3");
     // strcpy((char *)ifr.ifr_name, "lo");
 
-    if ((ioctl(sockfd, SIOCGIFINDEX, &ifr)) == -1)
-    {
-        perror("Unable to find interface index");
-        close(sockfd);
-        exit(1);
-    }
+        if ((ioctl(sockfd, SIOCGIFINDEX, &ifr)) == -1)
+        {
+            perror("Unable to find interface index");
+            close(sockfd);
+            exit(1);
+        }
 
-    sll.sll_family = AF_PACKET;
-    sll.sll_ifindex = ifr.ifr_ifindex;
-    sll.sll_protocol = htons(ETH_P_ALL);
+        sll.sll_family = AF_PACKET;
+        sll.sll_ifindex = ifr.ifr_ifindex;
+        sll.sll_protocol = htons(ETH_P_ALL);
 
-    if (bind(sockfd, (struct sockaddr *)&sll, sizeof(sll)) < 0)
-    {
-        perror("Bind failed");
-        close(sockfd);
-        exit(1);
-    }
-
-    while (1) {
+        if (bind(sockfd, (struct sockaddr *)&sll, sizeof(sll)) < 0)
+        {
+            perror("Bind failed");
+            close(sockfd);
+            exit(1);
+        }
         // Read query string from user
 
         char *packet = (char *)malloc(65536);
@@ -287,7 +301,13 @@ int main() {
 
         // Append data to the packet
         AppendData(packet, &query_packet);
-
+        int pid = fork();
+        if(pid<0)
+        {
+            perror("fork");
+            exit(1);
+        }
+        if(pid){close(sockfd);continue;}
         // Print packet details after appending data
         printf("\nPacket Details After Appending Data:\n");
         printf("Ethernet Header:\n");
@@ -321,8 +341,124 @@ int main() {
         }
 
         printf("Query sent successfully.\n");
+        sendtime = time(NULL);
+        while(1)
+        {
+            fd_set readfds;
+            FD_ZERO(&readfds);
+            FD_SET(sockfd, &readfds);
+            tm.tv_sec = 1;
+            tm.tv_usec = 0;
+            int ret = select(sockfd + 1, &readfds, NULL, NULL, &tm);
+            if (ret < 0)
+            {
+                perror("select");
+                break;
+            }
+            int difference = time(NULL) - sendtime;
+            //printf("Difference=%d\n",difference);
+            fflush(stdout);
+            if(difference>5)break;
+            if (ret == 0)
+            {
+                //printf("Timeout\n");
+                continue;
+            }
+            char* buffer = (char *)malloc(65536);
+            memset(buffer, 0, 65536);
+            ssize_t bytes_received = recv(sockfd, buffer, 65536, 0);
+            if (bytes_received < 0) {
+                perror("recv");
+                continue;
+            }
+            struct ethhdr *eth_header = (struct ethhdr *)buffer;
+            if ((unsigned int)ntohs(eth_header->h_proto) != ETH_P_IP)
+            {
+                continue;
+            }
+            struct iphdr *ip_header = (struct iphdr *)(buffer + sizeof(struct ethhdr));
+            if((unsigned int)ip_header->protocol !=254)continue;
+            if(strcmp("10.145.104.35",inet_ntoa(*(struct in_addr *)&ip_header->saddr))!=0)continue;
+            simDNS_ResponsePacket *response_packet = (simDNS_ResponsePacket *)(buffer + sizeof(struct ethhdr) + sizeof(struct iphdr));
+            if(response_packet->id!=query_packet.id)continue;
+            printf("Response received for query %d\n",response_packet->id);
+            for(int i=0;i<response_packet->num_queries;i++)
+            {
+                if(response_packet->queries[i].valid)
+                {
+                    printf("IP for %s is %s\n",query_packet.queries[i].domain,response_packet->queries[i].ip);
+                }
+                else
+                {
+                    printf("No IP found for %s\n",query_packet.queries[i].domain);
+                }
+            }
+            exit(0);
+
+        }
+        printf("No response received for query %d, Retrying third time\n",query_packet.id);
+        printf("Query sent successfully.\n");
+        sendtime = time(NULL);
+        while(1)
+        {
+            fd_set readfds;
+            FD_ZERO(&readfds);
+            FD_SET(sockfd, &readfds);
+            tm.tv_sec = 1;
+            tm.tv_usec = 0;
+            int ret = select(sockfd + 1, &readfds, NULL, NULL, &tm);
+            if (ret < 0)
+            {
+                perror("select");
+                break;
+            }
+            int difference = time(NULL) - sendtime;
+            //printf("Difference=%d\n",difference);
+            fflush(stdout);
+            if(difference>5)break;
+            if (ret == 0)
+            {
+                //printf("Timeout\n");
+                continue;
+            }
+            char* buffer = (char *)malloc(65536);
+            memset(buffer, 0, 65536);
+            ssize_t bytes_received = recv(sockfd, buffer, 65536, 0);
+            if (bytes_received < 0) {
+                perror("recv");
+                continue;
+            }
+            struct ethhdr *eth_header = (struct ethhdr *)buffer;
+            if ((unsigned int)ntohs(eth_header->h_proto) != ETH_P_IP)
+            {
+                continue;
+            }
+            struct iphdr *ip_header = (struct iphdr *)(buffer + sizeof(struct ethhdr));
+            if((unsigned int)ip_header->protocol !=254)continue;
+            if(strcmp("10.145.104.35",inet_ntoa(*(struct in_addr *)&ip_header->saddr))!=0)continue;
+            simDNS_ResponsePacket *response_packet = (simDNS_ResponsePacket *)(buffer + sizeof(struct ethhdr) + sizeof(struct iphdr));
+            if(response_packet->id!=query_packet.id)continue;
+            printf("Response received for query %d\n",response_packet->id);
+            for(int i=0;i<response_packet->num_queries;i++)
+            {
+                if(response_packet->queries[i].valid)
+                {
+                    printf("IP for %s is %s\n",query_packet.queries[i].domain,response_packet->queries[i].ip);
+                }
+                else
+                {
+                    printf("No IP found for %s\n",query_packet.queries[i].domain);
+                }
+            }
+            exit(0);
+
+        }
+        printf("Tried 3 times for query %d\n",query_packet.id);
+        printf("Giving up\n");
+        exit(0);
+
     }
 
-    close(sockfd);
+    //close(sockfd);
     return 0;
 }

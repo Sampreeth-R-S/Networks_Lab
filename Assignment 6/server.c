@@ -153,7 +153,14 @@ int main() {
 
         // Check if it's an IP packet
         if ((unsigned int)ntohs(eth_header->h_proto) != ETH_P_IP)
+        if ((unsigned int)ntohs(eth_header->h_proto) != ETH_P_IP)
         {
+            // printf("Not an IP packet,%d,%d\n",ntohs(eth_header->h_proto),ETH_P_IP);
+            // printf("Destination MAC: %02X:%02X:%02X:%02X:%02X:%02X\n",
+            //        eth_header->h_dest[0], eth_header->h_dest[1], eth_header->h_dest[2],
+            //        eth_header->h_dest[3], eth_header->h_dest[4], eth_header->h_dest[5]);
+            // printf("Source MAC: %02X:%02X:%02X:%02X:%02X:%02X\n",eth_header->h_source[0], eth_header->h_source[1], eth_header->h_source[2],
+            //        eth_header->h_source[3], eth_header->h_source[4], eth_header->h_source[5]);
             // printf("Not an IP packet,%d,%d\n",ntohs(eth_header->h_proto),ETH_P_IP);
             // printf("Destination MAC: %02X:%02X:%02X:%02X:%02X:%02X\n",
             //        eth_header->h_dest[0], eth_header->h_dest[1], eth_header->h_dest[2],
@@ -167,6 +174,7 @@ int main() {
         struct iphdr *ip_header = (struct iphdr *)(buffer + sizeof(struct ethhdr));
 
         // Print IP packet content
+        if((unsigned int)ip_header->protocol !=254)continue;
         if((unsigned int)ip_header->protocol !=254)continue;
         printf("Received IP Packet:\n");
         printf("Version: %u\n", (unsigned int)ip_header->version);
