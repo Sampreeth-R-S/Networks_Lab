@@ -306,6 +306,38 @@ int main() {
             exit(1);
         }
         if(pid){close(sockfd);continue;}
+        close(sockfd);
+        sockfd = socket(AF_PACKET, SOCK_RAW, htons(ETH_P_ALL));
+        if (sockfd < 0) {
+            perror("socket");
+            exit(EXIT_FAILURE);
+        }
+
+        // Set up server address structure
+        //struct sockaddr_ll sll;
+        //struct ifreq ifr;
+
+        bzero(&sll, sizeof(sll));
+        bzero(&ifr, sizeof(ifr));
+
+        strcpy((char *)ifr.ifr_name, "wlp3s0"); // Change interface name as needed
+
+        if ((ioctl(sockfd, SIOCGIFINDEX, &ifr)) == -1) {
+            perror("Unable to find interface index");
+            close(sockfd);
+            exit(EXIT_FAILURE);
+        }
+
+        sll.sll_family = AF_PACKET;
+        sll.sll_ifindex = ifr.ifr_ifindex;
+
+        if (bind(sockfd, (struct sockaddr *)&sll, sizeof(sll)) < 0) {
+            perror("Bind failed");
+            close(sockfd);
+            exit(EXIT_FAILURE);
+        }
+
+        printf("Client is listening for Ethernet packets...\n");
         // Print packet details after appending data
         printf("\nPacket Details After Appending Data:\n");
         printf("Ethernet Header:\n");
@@ -379,8 +411,23 @@ int main() {
             }
             struct iphdr *ip_header = (struct iphdr *)(buffer + sizeof(struct ethhdr));
             if((unsigned int)ip_header->protocol !=254)continue;
-            if(strcmp("10.145.104.35",inet_ntoa(*(struct in_addr *)&ip_header->saddr))!=0)continue;
+            //  printf("Received IP Packet:\n");
+            // printf("Version: %u\n", (unsigned int)ip_header->version);
+            // printf("Header Length: %u bytes\n", (unsigned int)(ip_header->ihl * 4));
+            // printf("Total Length: %u bytes\n", ntohs(ip_header->tot_len));
+            // printf("Source IP: %s\n", inet_ntoa(*(struct in_addr *)&ip_header->saddr));
+            // printf("Destination IP: %s\n", inet_ntoa(*(struct in_addr *)&ip_header->daddr));
+            // printf("Protocol: %u\n", (unsigned int)ip_header->protocol);
+            // printf("Destination MAC: %02X:%02X:%02X:%02X:%02X:%02X\n",
+            //         eth_header->h_dest[0], eth_header->h_dest[1], eth_header->h_dest[2],
+            //         eth_header->h_dest[3], eth_header->h_dest[4], eth_header->h_dest[5]);
+            //     printf("Source MAC: %02X:%02X:%02X:%02X:%02X:%02X\n",eth_header->h_source[0], eth_header->h_source[1], eth_header->h_source[2],
+            //         eth_header->h_source[3], eth_header->h_source[4], eth_header->h_source[5]);
+            // printf("\n");
+            // printf("%d,%d,%d\n",inet_addr("10.145.104.35"),ip_header->saddr,(inet_addr("10.145.104.35")==ip_header->saddr));
+            if(!(inet_addr("10.145.104.35")==ip_header->saddr)){printf("Continuing\n");continue;}
             simDNS_ResponsePacket *response_packet = (simDNS_ResponsePacket *)(buffer + sizeof(struct ethhdr) + sizeof(struct iphdr));
+            printf("%d,%d\n",response_packet->id,query_packet.id);
             if(response_packet->id!=query_packet.id)continue;
             printf("Response received for query %d\n",response_packet->id);
             for(int i=0;i<response_packet->num_queries;i++)
