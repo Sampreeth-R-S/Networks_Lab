@@ -27,7 +27,7 @@ int main() {
     bzero(&sll, sizeof(sll));
     bzero(&ifr, sizeof(ifr));
 
-    strcpy((char *)ifr.ifr_name, "eth0"); // Change interface name as needed
+    strcpy((char *)ifr.ifr_name, "wlp3s0"); // Change interface name as needed
 
     if ((ioctl(sockfd, SIOCGIFINDEX, &ifr)) == -1) {
         perror("Unable to find interface index");
@@ -63,14 +63,14 @@ int main() {
         eth_header = (struct ethhdr *)buffer;
 
         // Check if it's an IP packet
-        if (ntohs(eth_header->h_proto) != ETH_P_IP)
+        if ((unsigned int)ntohs(eth_header->h_proto) != ETH_P_IP)
         {
-            printf("Not an IP packet,%d,%d\n",ntohs(eth_header->h_proto),ETH_P_IP);
-            printf("Destination MAC: %02X:%02X:%02X:%02X:%02X:%02X\n",
-                   eth_header->h_dest[0], eth_header->h_dest[1], eth_header->h_dest[2],
-                   eth_header->h_dest[3], eth_header->h_dest[4], eth_header->h_dest[5]);
-            printf("Source MAC: %02X:%02X:%02X:%02X:%02X:%02X\n",eth_header->h_source[0], eth_header->h_source[1], eth_header->h_source[2],
-                   eth_header->h_source[3], eth_header->h_source[4], eth_header->h_source[5]);
+            // printf("Not an IP packet,%d,%d\n",ntohs(eth_header->h_proto),ETH_P_IP);
+            // printf("Destination MAC: %02X:%02X:%02X:%02X:%02X:%02X\n",
+            //        eth_header->h_dest[0], eth_header->h_dest[1], eth_header->h_dest[2],
+            //        eth_header->h_dest[3], eth_header->h_dest[4], eth_header->h_dest[5]);
+            // printf("Source MAC: %02X:%02X:%02X:%02X:%02X:%02X\n",eth_header->h_source[0], eth_header->h_source[1], eth_header->h_source[2],
+            //        eth_header->h_source[3], eth_header->h_source[4], eth_header->h_source[5]);
             continue;
         }
 
@@ -78,6 +78,7 @@ int main() {
         struct iphdr *ip_header = (struct iphdr *)(buffer + sizeof(struct ethhdr));
 
         // Print IP packet content
+        if((unsigned int)ip_header->protocol !=254)continue;
         printf("Received IP Packet:\n");
         printf("Version: %u\n", (unsigned int)ip_header->version);
         printf("Header Length: %u bytes\n", (unsigned int)(ip_header->ihl * 4));

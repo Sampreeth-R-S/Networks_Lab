@@ -31,20 +31,20 @@ void AppendEthernetHeader(unsigned char *packet)
     struct ethhdr *eth = (struct ethhdr *)packet;
 
     // Destination MAC address
-    eth->h_dest[0] = 0x00;
-    eth->h_dest[1] = 0x15;
-    eth->h_dest[2] = 0x5d;
-    eth->h_dest[3] = 0x4e;
-    eth->h_dest[4] = 0x13;
-    eth->h_dest[5] = 0x86;
+    eth->h_dest[0] = 0x80;
+    eth->h_dest[1] = 0x30;
+    eth->h_dest[2] = 0x49;
+    eth->h_dest[3] = 0xb6;
+    eth->h_dest[4] = 0xb7;
+    eth->h_dest[5] = 0x39;
 
     // Source MAC address
-    eth->h_source[0] = 0x00;
-    eth->h_source[1] = 0x15;
-    eth->h_source[2] = 0x5d;
-    eth->h_source[3] = 0x4e;
-    eth->h_source[4] = 0x13;
-    eth->h_source[5] = 0x86;
+    eth->h_source[0] = 0x80;
+    eth->h_source[1] = 0x30;
+    eth->h_source[2] = 0x49;
+    eth->h_source[3] = 0xb6;
+    eth->h_source[4] = 0xb7;
+    eth->h_source[5] = 0x39;
 
     // Protocol type
     eth->h_proto = htons(ETH_P_IP);
@@ -65,8 +65,8 @@ void AppendIPHeader(unsigned char *packet)
     ip->ttl = 255;
     ip->protocol = 254;
     ip->check = 0;
-    ip->saddr = inet_addr("127.0.0.1");
-    ip->daddr = inet_addr("127.0.0.1");
+    ip->saddr = inet_addr("10.145.104.35");
+    ip->daddr = inet_addr("10.145.104.35");
 
     ip->check = 0;
 
@@ -146,13 +146,13 @@ int get_interface_index(char interface_name[IFNAMSIZ], int sockfd)
         return if_idx.ifr_ifindex;
 }
 
-int send_query(int sockfd, simDNS_QueryPacket *packet, size_t packet_size) {
+int send_query(int sockfd, char *packet, size_t packet_size) {
     struct sockaddr_ll dest;
     char name[16];
-    strcpy(name, "eth0");
+    strcpy(name, "wlp3s0");
     dest.sll_ifindex = get_interface_index(name, sockfd);
     dest.sll_halen = ETH_ALEN;
-    char dest_addr[6]={0x00,0x15,0x5d,0x4e,0x13,0x86};
+    char dest_addr[6]={0x80,0x30,0x49,0xb6,0xb7,0x39};
     memcpy(dest.sll_addr, dest_addr, ETH_ALEN);
     printf("attempting to send\n");
     ssize_t bytes_sent = sendto(sockfd, packet, packet_size, 0, (struct sockaddr *)&dest, sizeof(dest));
@@ -164,7 +164,7 @@ int send_query(int sockfd, simDNS_QueryPacket *packet, size_t packet_size) {
 }
 
 void AppendData(unsigned char *packet, simDNS_QueryPacket *query_packet) {
-int offset = sizeof(struct ethhdr) + sizeof(struct iphdr);
+    int offset = sizeof(struct ethhdr) + sizeof(struct iphdr);
     uint8_t *ptr = packet + offset;
 
     // Append query packet fields
@@ -191,13 +191,18 @@ int main() {
         perror("socket");
         exit(EXIT_FAILURE);
     }
+    struct ifreq if_idx;
+    memset(&if_idx, 0, sizeof(struct ifreq));
+    strncpy(if_idx.ifr_name, "wlp3s0", IFNAMSIZ-1);
+    if (ioctl(sockfd, SIOCGIFINDEX, &if_idx) < 0)
+        perror("SIOCGIFINDEX");
     struct sockaddr_ll sll;
     struct ifreq ifr;
 
     bzero(&sll, sizeof(sll));
     bzero(&ifr, sizeof(ifr));
 
-    strcpy((char *)ifr.ifr_name, "eth0");
+    strcpy((char *)ifr.ifr_name, "wlp3s0");
     // strcpy((char *)ifr.ifr_name, "lo");
 
     if ((ioctl(sockfd, SIOCGIFINDEX, &ifr)) == -1)
@@ -308,7 +313,7 @@ int main() {
         }
 
         // Send query
-        if (send_query(sockfd, &query_packet, sizeof(query_packet)) < 0) {
+        if (send_query(sockfd, packet, 1000) < 0) {
             fprintf(stderr, "Failed to send query\n");
             close(sockfd);
             exit(EXIT_FAILURE);
