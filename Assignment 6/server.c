@@ -19,14 +19,13 @@
 #define MAX_DOMAIN_SIZE 31
 #define MAX_QUERIES 8
 
-
-typedef struct {
+typedef struct{
     uint16_t id;
     uint8_t message_type;
     uint8_t num_queries;
     struct {
-        uint8_t size;
-        char domain[MAX_DOMAIN_SIZE];
+        uint8_t valid;
+        char ip[MAX_DOMAIN_SIZE];
     } queries[MAX_QUERIES];
 } simDNS_ResponsePacket;
 
@@ -70,8 +69,8 @@ void AppendIPHeader(unsigned char *packet)
     ip->ttl = 255;
     ip->protocol = 254;
     ip->check = 0;
-    ip->saddr = inet_addr("10.145.104.35");
-    ip->daddr = inet_addr("10.145.104.35");
+    ip->saddr = inet_addr("127.0.0.1");
+    ip->daddr = inet_addr("127.0.0.1");
 
     ip->check = 0;
 
@@ -116,7 +115,7 @@ int main() {
     bzero(&sll, sizeof(sll));
     bzero(&ifr, sizeof(ifr));
 
-    strcpy((char *)ifr.ifr_name, "wlp3s0"); // Change interface name as needed
+    strcpy((char *)ifr.ifr_name, "enp0s3"); // Change interface name as needed
 
     if ((ioctl(sockfd, SIOCGIFINDEX, &ifr)) == -1) {
         perror("Unable to find interface index");
@@ -154,18 +153,6 @@ int main() {
         // Check if it's an IP packet
         if ((unsigned int)ntohs(eth_header->h_proto) != ETH_P_IP)
         {
-            // printf("Not an IP packet,%d,%d\n",ntohs(eth_header->h_proto),ETH_P_IP);
-            // printf("Destination MAC: %02X:%02X:%02X:%02X:%02X:%02X\n",
-            //        eth_header->h_dest[0], eth_header->h_dest[1], eth_header->h_dest[2],
-            //        eth_header->h_dest[3], eth_header->h_dest[4], eth_header->h_dest[5]);
-            // printf("Source MAC: %02X:%02X:%02X:%02X:%02X:%02X\n",eth_header->h_source[0], eth_header->h_source[1], eth_header->h_source[2],
-            //        eth_header->h_source[3], eth_header->h_source[4], eth_header->h_source[5]);
-            // printf("Not an IP packet,%d,%d\n",ntohs(eth_header->h_proto),ETH_P_IP);
-            // printf("Destination MAC: %02X:%02X:%02X:%02X:%02X:%02X\n",
-            //        eth_header->h_dest[0], eth_header->h_dest[1], eth_header->h_dest[2],
-            //        eth_header->h_dest[3], eth_header->h_dest[4], eth_header->h_dest[5]);
-            // printf("Source MAC: %02X:%02X:%02X:%02X:%02X:%02X\n",eth_header->h_source[0], eth_header->h_source[1], eth_header->h_source[2],
-            //        eth_header->h_source[3], eth_header->h_source[4], eth_header->h_source[5]);
             continue;
         }
 
@@ -204,7 +191,8 @@ int main() {
         // Extract message type and number of queries
         uint8_t type_and_queries = *ptr;
         uint8_t message_type = (type_and_queries >> 7) & 0x01;
-        uint8_t num_queries = type_and_queries & 0x07;
+        ptr++;
+        uint8_t num_queries = *ptr;
         printf("Message Type: %s\n", message_type ? "Response" : "Query");
         printf("Number of Queries: %d\n", num_queries);
         ptr++;
@@ -218,9 +206,13 @@ int main() {
         AppendIPHeader((unsigned char *)response_packet);
 
         //Copy ID of the query packet
+        struct simDNS_ResponsePacket *response;
+        
+
         char *ptr2 = response_packet + sizeof(struct ethhdr) + sizeof(struct iphdr);
         *ptr2=id;
-        ptr2++;
+        printf("ID2: %d\n", id);
+        ptr2+=2;
         //Copy message type
         *ptr2 = 1 << 7;
         ptr2++;
@@ -236,18 +228,32 @@ int main() {
 
             char domain[MAX_DOMAIN_SIZE + 1]; // Extra byte for null-terminator
             memcpy(domain, ptr, size);
-            domain[size] = '\0'; // Null-terminate the string
+            //Remove the newline character if it exists
+            if(domain[size-1]=='\n'){
+                domain[size-1]='\0';
+            }
             ptr += size;
             struct hostent *host = gethostbyname(domain);
+
+            printf("\nDomain: %s\n", domain);
+            
             if (host != NULL && host->h_addr_list[0] != NULL) {
                 *ptr2 = 1 << 7;
                 ptr2++;
                 memcpy(ptr2, host->h_addr_list[0], host->h_length);
+                printf("Length: %d\n", host->h_length);
+                ptr2+=host->h_length;
+
+                //Print the IP address
+                printf("IP Address: %s\n", inet_ntoa(*(struct in_addr *)host->h_addr_list[0]));
             }
             else {
                 *ptr2 = 0 << 7;
                 ptr2++;
-                char *temp="000";
+                char *temp="0000";
+                ptr2+=4;
+                printf("IP Address: invalid\n");
+
                 memcpy(ptr2, temp, 4);
             }
 

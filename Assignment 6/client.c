@@ -43,20 +43,20 @@ void AppendEthernetHeader(unsigned char *packet)
     struct ethhdr *eth = (struct ethhdr *)packet;
 
     // Destination MAC address
-    eth->h_dest[0] = 0x80;
-    eth->h_dest[1] = 0x30;
-    eth->h_dest[2] = 0x49;
-    eth->h_dest[3] = 0xb6;
-    eth->h_dest[4] = 0xb7;
-    eth->h_dest[5] = 0x39;
+    eth->h_dest[0] = 0x08;
+    eth->h_dest[1] = 0x00;
+    eth->h_dest[2] = 0x27;
+    eth->h_dest[3] = 0xe3;
+    eth->h_dest[4] = 0x2a;
+    eth->h_dest[5] = 0xa0;
 
     // Source MAC address
-    eth->h_source[0] = 0x80;
-    eth->h_source[1] = 0x30;
-    eth->h_source[2] = 0x49;
-    eth->h_source[3] = 0xb6;
-    eth->h_source[4] = 0xb7;
-    eth->h_source[5] = 0x39;
+    eth->h_source[0] = 0x08;
+    eth->h_source[1] = 0x00;
+    eth->h_source[2] = 0x27;
+    eth->h_source[3] = 0xe3;
+    eth->h_source[4] = 0x2a;
+    eth->h_source[5] = 0xa0;
 
     // Protocol type
     eth->h_proto = htons(ETH_P_IP);
@@ -77,8 +77,8 @@ void AppendIPHeader(unsigned char *packet)
     ip->ttl = 255;
     ip->protocol = 254;
     ip->check = 0;
-    ip->saddr = inet_addr("10.145.104.35");
-    ip->daddr = inet_addr("10.145.104.35");
+    ip->saddr = inet_addr("127.0.0.1");
+    ip->daddr = inet_addr("127.0.0.1");
 
     ip->check = 0;
 
@@ -161,10 +161,10 @@ int get_interface_index(char interface_name[IFNAMSIZ], int sockfd)
 int send_query(int sockfd, char *packet, size_t packet_size) {
     struct sockaddr_ll dest;
     char name[16];
-    strcpy(name, "wlp3s0");
+    strcpy(name, "enp0s3");
     dest.sll_ifindex = get_interface_index(name, sockfd);
     dest.sll_halen = ETH_ALEN;
-    char dest_addr[6]={0x80,0x30,0x49,0xb6,0xb7,0x39};
+    char dest_addr[6]={0x08,0x00,0x27,0xe3,0x2a,0xa0};
     memcpy(dest.sll_addr, dest_addr, ETH_ALEN);
     printf("attempting to send\n");
     ssize_t bytes_sent = sendto(sockfd, packet, packet_size, 0, (struct sockaddr *)&dest, sizeof(dest));
@@ -183,11 +183,13 @@ void AppendData(unsigned char *packet, simDNS_QueryPacket *query_packet) {
     *(uint16_t *)ptr = htons(query_packet->id); // ID
     ptr += 2;
     *ptr = (query_packet->message_type & 0x01) << 7; // Message Type
-    *ptr |= query_packet->num_queries & 0x07; // Number of queries
+    ptr++;
+    *ptr = query_packet->num_queries ; // Number of queries
     ptr++;
 
     // Append query strings
     for (int i = 0; i < query_packet->num_queries; i++) {
+
         *ptr = query_packet->queries[i].size; // Size of domain name
         ptr++;
         memcpy(ptr, query_packet->queries[i].domain, query_packet->queries[i].size); // Domain name
@@ -208,7 +210,7 @@ int main() {
         }
         struct ifreq if_idx;
         memset(&if_idx, 0, sizeof(struct ifreq));
-        strncpy(if_idx.ifr_name, "wlp3s0", IFNAMSIZ-1);
+        strncpy(if_idx.ifr_name, "enp0s3", IFNAMSIZ-1);
         if (ioctl(sockfd, SIOCGIFINDEX, &if_idx) < 0)
             perror("SIOCGIFINDEX");
         struct sockaddr_ll sll;
@@ -217,7 +219,7 @@ int main() {
         bzero(&sll, sizeof(sll));
         bzero(&ifr, sizeof(ifr));
 
-        strcpy((char *)ifr.ifr_name, "wlp3s0");
+        strcpy((char *)ifr.ifr_name, "enp0s3");
         // strcpy((char *)ifr.ifr_name, "lo");
 
         if ((ioctl(sockfd, SIOCGIFINDEX, &ifr)) == -1)
@@ -320,7 +322,7 @@ int main() {
         bzero(&sll, sizeof(sll));
         bzero(&ifr, sizeof(ifr));
 
-        strcpy((char *)ifr.ifr_name, "wlp3s0"); // Change interface name as needed
+        strcpy((char *)ifr.ifr_name, "enp0s3"); // Change interface name as needed
 
         if ((ioctl(sockfd, SIOCGIFINDEX, &ifr)) == -1) {
             perror("Unable to find interface index");
@@ -352,7 +354,7 @@ int main() {
         printf("Protocol: %d\n", ip->protocol);
         printf("Checksum: %04x\n", ntohs(ip->check));
         printf("Queries:\n");
-        uint8_t *ptr = (uint8_t *)packet + sizeof(struct ethhdr) + sizeof(struct iphdr) + 3; // Skip Ethernet and IP headers and move to the start of queries
+        uint8_t *ptr = (uint8_t *)packet + sizeof(struct ethhdr) + sizeof(struct iphdr) + 4; // Skip Ethernet and IP headers and move to the start of queries
         for (int i = 0; i < num_queries; i++) {
             uint8_t size = *ptr;
             ptr++;
@@ -411,30 +413,42 @@ int main() {
             }
             struct iphdr *ip_header = (struct iphdr *)(buffer + sizeof(struct ethhdr));
             if((unsigned int)ip_header->protocol !=254)continue;
-            //  printf("Received IP Packet:\n");
-            // printf("Version: %u\n", (unsigned int)ip_header->version);
-            // printf("Header Length: %u bytes\n", (unsigned int)(ip_header->ihl * 4));
-            // printf("Total Length: %u bytes\n", ntohs(ip_header->tot_len));
-            // printf("Source IP: %s\n", inet_ntoa(*(struct in_addr *)&ip_header->saddr));
-            // printf("Destination IP: %s\n", inet_ntoa(*(struct in_addr *)&ip_header->daddr));
-            // printf("Protocol: %u\n", (unsigned int)ip_header->protocol);
-            // printf("Destination MAC: %02X:%02X:%02X:%02X:%02X:%02X\n",
-            //         eth_header->h_dest[0], eth_header->h_dest[1], eth_header->h_dest[2],
-            //         eth_header->h_dest[3], eth_header->h_dest[4], eth_header->h_dest[5]);
-            //     printf("Source MAC: %02X:%02X:%02X:%02X:%02X:%02X\n",eth_header->h_source[0], eth_header->h_source[1], eth_header->h_source[2],
-            //         eth_header->h_source[3], eth_header->h_source[4], eth_header->h_source[5]);
-            // printf("\n");
-            // printf("%d,%d,%d\n",inet_addr("10.145.104.35"),ip_header->saddr,(inet_addr("10.145.104.35")==ip_header->saddr));
-            if(!(inet_addr("10.145.104.35")==ip_header->saddr)){printf("Continuing\n");continue;}
-            simDNS_ResponsePacket *response_packet = (simDNS_ResponsePacket *)(buffer + sizeof(struct ethhdr) + sizeof(struct iphdr));
-            printf("%d,%d\n",response_packet->id,query_packet.id);
-            if(response_packet->id!=query_packet.id)continue;
-            printf("Response received for query %d\n",response_packet->id);
-            for(int i=0;i<response_packet->num_queries;i++)
+
+            if(!(inet_addr("127.0.0.1")==ip_header->saddr)){printf("Continuing\n");continue;}
+            int offset = sizeof(struct ethhdr) + sizeof(struct iphdr);
+            uint8_t *ptr_resp = buffer + offset;
+
+            // Extract ID
+            uint16_t id_resp = ntohs(*(uint16_t *)ptr_resp);
+            printf("ID: %d\n", id_resp);
+            ptr_resp += 2;
+
+            // Extract message type and number of queries
+            uint8_t type_and_queries = *ptr_resp;
+            uint8_t message_type = (type_and_queries >> 7) & 0x01;
+            ptr_resp++;
+            uint8_t num_resp = *ptr_resp;
+            printf("Message Type: %s\n", message_type ? "Response" : "Query");
+            printf("Number of Queries: %d\n", num_resp);
+            ptr_resp++;
+            // simDNS_ResponsePacket *response_packet = (simDNS_ResponsePacket *)(buffer + sizeof(struct ethhdr) + sizeof(struct iphdr));
+            // printf("%d,%d\n",response_packet->id,query_packet.id);
+            // if(response_packet->id!=query_packet.id)continue;
+            printf("Response received for query %d\n",id_resp);
+            for(int i=0;i<num_resp;i++)
             {
-                if(response_packet->queries[i].valid)
+                uint8_t is_valid= *ptr_resp;
+                ptr_resp++;
+
+                char resp_ip[4]; // Extra byte for null-terminator
+                memcpy(resp_ip, ptr_resp, 4);
+                ptr_resp += 4;
+                
+                if(is_valid)
                 {
-                    printf("IP for %s is %s\n",query_packet.queries[i].domain,response_packet->queries[i].ip);
+                    //Use inet_ntoa to convert the IP address to a string
+                    // printf("IP is %s\n",inet_ntoa(*(struct in_addr *)&resp_ip));
+                    printf("IP for %s is %s\n",query_packet.queries[i].domain,inet_ntoa(*(struct in_addr *)&resp_ip));
                 }
                 else
                 {
@@ -490,7 +504,7 @@ int main() {
             }
             struct iphdr *ip_header = (struct iphdr *)(buffer + sizeof(struct ethhdr));
             if((unsigned int)ip_header->protocol !=254)continue;
-            if(strcmp("10.145.104.35",inet_ntoa(*(struct in_addr *)&ip_header->saddr))!=0)continue;
+            if(strcmp("127.0.0.1",inet_ntoa(*(struct in_addr *)&ip_header->saddr))!=0)continue;
             simDNS_ResponsePacket *response_packet = (simDNS_ResponsePacket *)(buffer + sizeof(struct ethhdr) + sizeof(struct iphdr));
             if(response_packet->id!=query_packet.id)continue;
             printf("Response received for query %d\n",response_packet->id);
@@ -547,7 +561,7 @@ int main() {
             }
             struct iphdr *ip_header = (struct iphdr *)(buffer + sizeof(struct ethhdr));
             if((unsigned int)ip_header->protocol !=254)continue;
-            if(strcmp("10.145.104.35",inet_ntoa(*(struct in_addr *)&ip_header->saddr))!=0)continue;
+            if(strcmp("127.0.0.1",inet_ntoa(*(struct in_addr *)&ip_header->saddr))!=0)continue;
             simDNS_ResponsePacket *response_packet = (simDNS_ResponsePacket *)(buffer + sizeof(struct ethhdr) + sizeof(struct iphdr));
             if(response_packet->id!=query_packet.id)continue;
             printf("Response received for query %d\n",response_packet->id);
