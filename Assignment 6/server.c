@@ -116,7 +116,7 @@ int main() {
     bzero(&sll, sizeof(sll));
     bzero(&ifr, sizeof(ifr));
 
-    strcpy((char *)ifr.ifr_name, "enp0s3"); // Change interface name as needed
+    strcpy((char *)ifr.ifr_name, "wlp3s0"); // Change interface name as needed
 
     if ((ioctl(sockfd, SIOCGIFINDEX, &ifr)) == -1) {
         perror("Unable to find interface index");
