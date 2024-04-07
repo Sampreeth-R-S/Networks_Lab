@@ -99,26 +99,40 @@ void AppendIPHeader(unsigned char *packet)
 
 int is_valid_domain(const char *domain) {
 
+    printf("Domain: %s\n", domain);
     size_t len = strlen(domain);
     if (len < 3 || len > 31)
-        return 0;
+        {
+            printf("Invalid length: %ld\n", len);
+            return 0;
+            }
 
-    for (size_t i = 0; i < len; i++) {
+    for (size_t i = 0; i < len-1; i++) {
         if (!((domain[i] >= 'a' && domain[i] <= 'z') ||
               (domain[i] >= 'A' && domain[i] <= 'Z') ||
               (domain[i] >= '0' && domain[i] <= '9') ||
               (domain[i] == '-') ||
               (domain[i] == '.' && i > 0 && i < len - 1)))
-            return 0;
+            {
+                printf("Invalid character: %c\n", domain[i]);
+                return 0;
+                }
     }
 
     for (size_t i = 0; i < len - 1; i++) {
         if (domain[i] == '-' && domain[i + 1] == '-')
-            return 0;
+            {
+                printf("Invalid character2: %c\n", domain[i]);
+                return 0;
+            }
     }
 
     if (domain[0] == '-' || domain[len - 1] == '-')
-        return 0;
+        {
+            printf("Invalid character3: %c\n", domain[0]);
+            return 0;
+        }
+
 
     return 1;
 }
@@ -212,18 +226,27 @@ int main() {
             continue;
         }
 
+        
+        printf("num_queries: %d\n", num_queries);
         int valid = 1;
+        char *token = strtok(query_string, " ");
+        token = strtok(NULL," ");
         for (int i = 0; i < num_queries; i++) {
-            if (scanf("%s", domain[i]) != 1 || !is_valid_domain(domain[i])) {
+            token = strtok(NULL, " ");
+            printf("token: %s\n", token);
+            if (token == NULL || !is_valid_domain(token)) {
                 printf("Invalid domain name format. Please ensure all domain names follow the guidelines.\n");
                 valid = 0;
                 break;
             }
+            strcpy(domain[i], token);
         }
     
-
+        
         if (!valid)
             continue;
+        
+        printf("Query string parsed successfully.\n");
 
         // Construct query packet
         simDNS_QueryPacket query_packet;
@@ -234,9 +257,45 @@ int main() {
             query_packet.queries[i].size = strlen(domain[i]);
             strcpy(query_packet.queries[i].domain, domain[i]);
         }
+        printf("Query packet constructed successfully.\n");
+        // Print packet details before sending
+        printf("\nPacket Details Before Sending:\n");
+        printf("ID: %d\n", query_packet.id);
+        printf("Message Type: %d\n", query_packet.message_type);
+        printf("Number of Queries: %d\n", query_packet.num_queries);
+        for (int i = 0; i < query_packet.num_queries; i++) {
+            printf("Query %d: %s\n", i + 1, query_packet.queries[i].domain);
+        }
+
+        // Append data to the packet
+        AppendData(packet, &query_packet);
+
+        // Print packet details after appending data
+        printf("\nPacket Details After Appending Data:\n");
+        printf("Ethernet Header:\n");
+        printf("Source MAC: %02x:%02x:%02x:%02x:%02x:%02x\n", packet[6], packet[7], packet[8], packet[9], packet[10], packet[11]);
+        printf("Destination MAC: %02x:%02x:%02x:%02x:%02x:%02x\n", packet[0], packet[1], packet[2], packet[3], packet[4], packet[5]);
+        printf("IP Header:\n");
+        struct iphdr *ip = (struct iphdr *)(packet + sizeof(struct ethhdr));
+        printf("Source IP: %s\n", inet_ntoa(*(struct in_addr *)&ip->saddr));
+        printf("Destination IP: %s\n", inet_ntoa(*(struct in_addr *)&ip->daddr));
+        printf("ID: %d\n", ntohs(ip->id));
+        printf("Total Length: %d\n", ntohs(ip->tot_len));
+        printf("Protocol: %d\n", ip->protocol);
+        printf("Checksum: %04x\n", ntohs(ip->check));
+        printf("Queries:\n");
+        uint8_t *ptr = (uint8_t *)packet + sizeof(struct ethhdr) + sizeof(struct iphdr) + 3; // Skip Ethernet and IP headers and move to the start of queries
+        for (int i = 0; i < num_queries; i++) {
+            uint8_t size = *ptr;
+            ptr++;
+            char domain[MAX_DOMAIN_SIZE];
+            memcpy(domain, ptr, size);
+            domain[size] = '\0';
+            ptr += size;
+            printf("Query %d: %s\n", i + 1, domain);
+        }
 
         // Send query
-        AppendData(packet, &query_packet);
         if (send_query(sockfd, &query_packet, sizeof(query_packet)) < 0) {
             fprintf(stderr, "Failed to send query\n");
             close(sockfd);
@@ -249,3 +308,4 @@ int main() {
     close(sockfd);
     return 0;
 }
+
