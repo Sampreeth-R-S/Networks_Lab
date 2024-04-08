@@ -206,6 +206,7 @@ int main(){
         int offset = sizeof(struct ethhdr) + sizeof(struct iphdr);
 
         simDNS_QueryPacket *query_packet = (simDNS_QueryPacket *)(packet + offset);
+        if(query_packet->message_type==1)continue;
         printf("Received DNS Query Packet:\n");
         printf("ID: %u\n", ntohs(query_packet->id));
         printf("Message Type: %u\n", query_packet->message_type);
