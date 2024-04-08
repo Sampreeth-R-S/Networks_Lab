@@ -41,7 +41,14 @@ typedef struct{
         char ip[MAX_DOMAIN_SIZE];
     } queries[MAX_QUERIES];
 } simDNS_ResponsePacket;
-
+int droppacket(){
+    srand(time(0));
+    int random = rand()%100;
+    if(random<20){
+        return 1;
+    }
+    return 0;
+}
 void AppendEthernetHeader(unsigned char *packet)
 {
     struct ethhdr *eth = (struct ethhdr *)packet;
@@ -126,7 +133,7 @@ int main(){
     bzero(&sll, sizeof(sll));
     bzero(&ifr, sizeof(ifr));
 
-    strcpy((char *)ifr.ifr_name, "enp0s3"); // Change interface name as needed
+    strcpy((char *)ifr.ifr_name, "wlp3s0"); // Change interface name as needed
 
     if ((ioctl(sockfd, SIOCGIFINDEX, &ifr)) == -1) {
         perror("Unable to find interface index");
@@ -191,6 +198,11 @@ int main(){
             //Discard the packet
             continue;
         }
+        if(droppacket())
+        {
+            printf("Server dropping packet\n");
+            continue;
+        }
         int offset = sizeof(struct ethhdr) + sizeof(struct iphdr);
 
         simDNS_QueryPacket *query_packet = (simDNS_QueryPacket *)(packet + offset);
@@ -240,7 +252,8 @@ int main(){
             perror("send");
             exit(EXIT_FAILURE);
         }
-
+        printf("Sent successfully\n");
+        fflush(stdout);
 
 
     }
