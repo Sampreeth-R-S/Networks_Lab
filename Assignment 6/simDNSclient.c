@@ -39,25 +39,25 @@ typedef struct{
     } queries[MAX_QUERIES];
 } simDNS_ResponsePacket;
 
-void AppendEthernetHeader(unsigned char *packet)
+void AppendEthernetHeader(unsigned char *packet, unsigned char *dest_mac)
 {
     struct ethhdr *eth = (struct ethhdr *)packet;
 
     // Destination MAC address
-    eth->h_dest[0] = 0x80;
-    eth->h_dest[1] = 0x30;
-    eth->h_dest[2] = 0x49;
-    eth->h_dest[3] = 0xb6;
-    eth->h_dest[4] = 0xb7;
-    eth->h_dest[5] = 0x39;
+    eth->h_dest[0] = dest_mac[0];
+    eth->h_dest[1] = dest_mac[1];
+    eth->h_dest[2] = dest_mac[2];
+    eth->h_dest[3] = dest_mac[3];
+    eth->h_dest[4] = dest_mac[4];
+    eth->h_dest[5] = dest_mac[5];
 
     // Source MAC address
-    eth->h_source[0] = 0x80;
-    eth->h_source[1] = 0x30;
-    eth->h_source[2] = 0x49;
-    eth->h_source[3] = 0xb6;
-    eth->h_source[4] = 0xb7;
-    eth->h_source[5] = 0x39;
+    eth->h_source[0] = 0x08;
+    eth->h_source[1] = 0x00;
+    eth->h_source[2] = 0x27;
+    eth->h_source[3] = 0xe3;
+    eth->h_source[4] = 0x2a;
+    eth->h_source[5] = 0xa0;
 
     // Protocol type
     eth->h_proto = htons(ETH_P_IP);
@@ -78,8 +78,8 @@ void AppendIPHeader(unsigned char *packet)
     ip->ttl = 255;
     ip->protocol = 254;
     ip->check = 0;
-    ip->saddr = inet_addr("10.145.104.35");
-    ip->daddr = inet_addr("10.145.104.35");
+    ip->saddr = inet_addr("127.0.0.1");
+    ip->daddr = inet_addr("127.0.0.1");
 
     ip->check = 0;
 
@@ -111,7 +111,7 @@ void AppendIPHeader(unsigned char *packet)
 
 int is_valid_domain(const char *domain) {
 
-   printf("Domain: %s\n", domain);
+//    printf("Domain: %s\n", domain);
     size_t len = strlen(domain);
     if (len < 3 || len > 31)
         {
@@ -149,7 +149,19 @@ int is_valid_domain(const char *domain) {
     return 1;
 }
 
-int main(){
+int main(int argc, char *argv[])
+{   
+    //Read destination MAC address from argument
+    unsigned char dest_mac[6];
+    if (argc != 2) {
+        printf("Usage: %s <destination MAC address>\n", argv[0]);
+        exit(EXIT_FAILURE);
+    }
+    if (sscanf(argv[1], "%hhx:%hhx:%hhx:%hhx:%hhx:%hhx", &dest_mac[0], &dest_mac[1], &dest_mac[2], &dest_mac[3], &dest_mac[4], &dest_mac[5]) != 6) {
+        printf("Invalid MAC address format. Please try again.\n");
+        exit(EXIT_FAILURE);
+    }
+
     while(1)
     {
         int sockfd = socket(AF_PACKET, SOCK_RAW, htons(ETH_P_ALL));
@@ -159,7 +171,7 @@ int main(){
         }
         struct ifreq if_idx;
         memset(&if_idx, 0, sizeof(struct ifreq));
-        strncpy(if_idx.ifr_name, "wlp3s0", IFNAMSIZ-1);
+        strncpy(if_idx.ifr_name, "enp0s3", IFNAMSIZ-1);
         if (ioctl(sockfd, SIOCGIFINDEX, &if_idx) < 0)
             perror("SIOCGIFINDEX");
         struct sockaddr_ll sll;
@@ -168,7 +180,7 @@ int main(){
         bzero(&sll, sizeof(sll));
         bzero(&ifr, sizeof(ifr));
 
-        strcpy((char *)ifr.ifr_name, "wlp3s0");
+        strcpy((char *)ifr.ifr_name, "enp0s3");
         // strcpy((char *)ifr.ifr_name, "lo");
 
         if ((ioctl(sockfd, SIOCGIFINDEX, &ifr)) == -1)
@@ -213,7 +225,7 @@ int main(){
         token = strtok(NULL," ");
         for (int i = 0; i < num_queries; i++) {
             token = strtok(NULL, " ");
-            printf("token: %s\n", token);
+            // printf("token: %s\n", token);
             //Remove newline character if present
             if (token[strlen(token) - 1] == '\n')
                 token[strlen(token) - 1] = '\0';
@@ -243,7 +255,7 @@ int main(){
         }
         unsigned char packet[sizeof(struct ethhdr) + sizeof(struct iphdr) + sizeof(simDNS_QueryPacket)+10];
         memset(packet, 0, sizeof(packet));
-        AppendEthernetHeader(packet);
+        AppendEthernetHeader(packet,dest_mac);
         AppendIPHeader(packet);
 
         memcpy(packet + sizeof(struct ethhdr) + sizeof(struct iphdr), &query, sizeof(simDNS_QueryPacket));

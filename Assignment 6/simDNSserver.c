@@ -133,7 +133,7 @@ int main(){
     bzero(&sll, sizeof(sll));
     bzero(&ifr, sizeof(ifr));
 
-    strcpy((char *)ifr.ifr_name, "wlp3s0"); // Change interface name as needed
+    strcpy((char *)ifr.ifr_name, "enp0s3"); // Change interface name as needed
 
     if ((ioctl(sockfd, SIOCGIFINDEX, &ifr)) == -1) {
         perror("Unable to find interface index");
@@ -149,11 +149,10 @@ int main(){
         close(sockfd);
         exit(EXIT_FAILURE);
     }
-
     printf("Server is listening for Ethernet packets...\n");
-
     while(1)
     {
+        
         size_t struct_size = sizeof(simDNS_QueryPacket);
         size_t packet_size = struct_size + sizeof(struct ethhdr) + sizeof(struct iphdr);
         unsigned char *packet = malloc(packet_size);
@@ -181,18 +180,18 @@ int main(){
         if((unsigned int)ip_header->protocol !=254)continue;
 
         printf("Received IP Packet:\n");
-        printf("Version: %u\n", (unsigned int)ip_header->version);
-        printf("Header Length: %u bytes\n", (unsigned int)(ip_header->ihl * 4));
-        printf("Total Length: %u bytes\n", ntohs(ip_header->tot_len));
-        printf("Source IP: %s\n", inet_ntoa(*(struct in_addr *)&ip_header->saddr));
-        printf("Destination IP: %s\n", inet_ntoa(*(struct in_addr *)&ip_header->daddr));
-        printf("Protocol: %u\n", (unsigned int)ip_header->protocol);
-        printf("Destination MAC: %02X:%02X:%02X:%02X:%02X:%02X\n",
-                   eth_header->h_dest[0], eth_header->h_dest[1], eth_header->h_dest[2],
-                   eth_header->h_dest[3], eth_header->h_dest[4], eth_header->h_dest[5]);
-            printf("Source MAC: %02X:%02X:%02X:%02X:%02X:%02X\n",eth_header->h_source[0], eth_header->h_source[1], eth_header->h_source[2],
-                   eth_header->h_source[3], eth_header->h_source[4], eth_header->h_source[5]);
-        printf("\n");
+        // printf("Version: %u\n", (unsigned int)ip_header->version);
+        // printf("Header Length: %u bytes\n", (unsigned int)(ip_header->ihl * 4));
+        // printf("Total Length: %u bytes\n", ntohs(ip_header->tot_len));
+        // printf("Source IP: %s\n", inet_ntoa(*(struct in_addr *)&ip_header->saddr));
+        // printf("Destination IP: %s\n", inet_ntoa(*(struct in_addr *)&ip_header->daddr));
+        // printf("Protocol: %u\n", (unsigned int)ip_header->protocol);
+        // printf("Destination MAC: %02X:%02X:%02X:%02X:%02X:%02X\n",
+        //            eth_header->h_dest[0], eth_header->h_dest[1], eth_header->h_dest[2],
+        //            eth_header->h_dest[3], eth_header->h_dest[4], eth_header->h_dest[5]);
+        //     printf("Source MAC: %02X:%02X:%02X:%02X:%02X:%02X\n",eth_header->h_source[0], eth_header->h_source[1], eth_header->h_source[2],
+        //            eth_header->h_source[3], eth_header->h_source[4], eth_header->h_source[5]);
+        // printf("\n");
 
         if(ip_header->protocol!=254){
             //Discard the packet
@@ -209,7 +208,7 @@ int main(){
         if(query_packet->message_type==1)continue;
         printf("Received DNS Query Packet:\n");
         printf("ID: %u\n", ntohs(query_packet->id));
-        printf("Message Type: %u\n", query_packet->message_type);
+        // printf("Message Type: %u\n", query_packet->message_type);
         printf("Number of Queries: %u\n", query_packet->num_queries);
         int i;
         for (i = 0; i < query_packet->num_queries; i++)
@@ -222,7 +221,7 @@ int main(){
         response_packet->id = query_packet->id;
         response_packet->message_type = 1;
         response_packet->num_queries = query_packet->num_queries;
-        printf("Sending %d responses\n", response_packet->num_queries);
+        // printf("Sending %d responses\n", response_packet->num_queries);
 
         for(i=0;i<query_packet->num_queries;i++){
 
@@ -235,7 +234,7 @@ int main(){
                 char *ip = inet_ntoa(*(struct in_addr *)host->h_addr_list[0]);
                 printf("IP Address: %s\n", ip);
                 memcpy(response_packet->queries[i].ip, ip, 32);
-                printf("IP Address2: %s\n", response_packet->queries[i].ip);
+                // printf("IP Address2: %s\n", response_packet->queries[i].ip);
             }
             else {
                 response_packet->queries[i].valid = 0;
@@ -245,15 +244,31 @@ int main(){
 
         unsigned char *response_packet_buffer = (malloc(sizeof(simDNS_ResponsePacket) + sizeof(struct ethhdr) + sizeof(struct iphdr)));
         memcpy(response_packet_buffer + sizeof(struct ethhdr) + sizeof(struct iphdr), response_packet, sizeof(simDNS_ResponsePacket));
-        AppendEthernetHeader(response_packet_buffer);
-        AppendIPHeader(response_packet_buffer);
+        //Use the same ethernet header
+        memcpy(response_packet_buffer, packet, sizeof(struct ethhdr));
+        //Use the same IP header
+        memcpy(response_packet_buffer + sizeof(struct ethhdr), packet + sizeof(struct ethhdr), sizeof(struct iphdr));
+
+        //swap the source and destination MAC addresses
+        struct ethhdr *response_eth_header = (struct ethhdr *)response_packet_buffer;
+        unsigned char temp[ETH_ALEN];
+        memcpy(temp, response_eth_header->h_dest, ETH_ALEN);
+        memcpy(response_eth_header->h_dest, response_eth_header->h_source, ETH_ALEN);
+        memcpy(response_eth_header->h_source, temp, ETH_ALEN);
+
+        //swap the source and destination IP addresses
+        struct iphdr *response_ip_header = (struct iphdr *)(response_packet_buffer + sizeof(struct ethhdr));
+        unsigned int temp_ip = response_ip_header->daddr;
+        response_ip_header->daddr = response_ip_header->saddr;
+        response_ip_header->saddr = temp_ip;
+    
 
         // Send the response packet
         if (send(sockfd, response_packet_buffer, sizeof(simDNS_ResponsePacket) + sizeof(struct ethhdr) + sizeof(struct iphdr), 0) < 0) {
             perror("send");
             exit(EXIT_FAILURE);
         }
-        printf("Sent successfully\n");
+        printf("Response sent successfully\n");
         fflush(stdout);
 
 
