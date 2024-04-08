@@ -1,2 +1,2 @@
 How to run:
-    Change the name of the interface of your NIC with the interface name coded in the assignment(line 162,171 of simDNSclient.c and line 136 of simDNSserver.c) and update the value of MAC address of sender and receiver(in the function Appendethheader in simDNSclient.c and simDNSserver.c), use the makefile to compile and run the files
+    Change the name of the interface of your NIC with the interface name coded in the assignment(line 162,171 of simDNSclient.c and line 136 of simDNSserver.c) and update the value of MAC address of sender (in the function Appendethheader in simDNSclient.c and simDNSserver.c), use the makefile to compile and run the files
