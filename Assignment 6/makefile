@@ -5,4 +5,6 @@ client: simDNSclient.c
 server: simDNSserver.c
 	gcc -o server simDNSserver.c
 	./server
-	
+
+clean:
+	rm -f client server
