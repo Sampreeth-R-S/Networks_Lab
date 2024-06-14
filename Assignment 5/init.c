@@ -325,7 +325,7 @@ void* R(void* arg)
                     if(sequence_number>=shm[index].sendwindow.start)
                     {
                         new_ack=1;
-                        if(sequence_number-shm[index].sendwindow.start<5)
+                        if(sequence_number-shm[index].sendwindow.start<10)
                         {
                             for(int j=shm[index].sendwindow.start;j!=(sequence_number+1)%16;j=(j+1)%16)
                             {
@@ -355,7 +355,7 @@ void* R(void* arg)
                     else 
                     {
                         new_ack=1;
-                        if(sequence_number+16-shm[index].sendwindow.start<5)
+                        if(sequence_number+16-shm[index].sendwindow.start<10)
                         {
                             for(int j=shm[index].sendwindow.start;j!=(sequence_number+1)%16;j=(j+1)%16)
                             {

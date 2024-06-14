@@ -1,0 +1,322 @@
+Server is listening for Ethernet packets...
+Not an IP packet,25455,2048
+Destination MAC: C6:23:00:01:0B:67
+Source MAC: 6F:6F:67:6C:65:2E
+Not an IP packet,34525,2048
+Destination MAC: 33:33:00:00:00:0C
+Source MAC: 00:15:5D:4E:18:B2
+Received IP Packet:
+Version: 4
+Header Length: 20 bytes
+Total Length: 1109 bytes
+Source IP: 172.19.64.1
+Destination IP: 239.255.255.250
+Protocol: 17
+
+Received IP Packet:
+Version: 4
+Header Length: 20 bytes
+Total Length: 165 bytes
+Source IP: 172.19.64.1
+Destination IP: 239.255.255.250
+Protocol: 17
+
+Received IP Packet:
+Version: 4
+Header Length: 20 bytes
+Total Length: 163 bytes
+Source IP: 172.19.64.1
+Destination IP: 239.255.255.250
+Protocol: 17
+
+Received IP Packet:
+Version: 4
+Header Length: 20 bytes
+Total Length: 1109 bytes
+Source IP: 172.19.64.1
+Destination IP: 239.255.255.250
+Protocol: 17
+
+Not an IP packet,34525,2048
+Destination MAC: 33:33:00:00:00:0C
+Source MAC: 00:15:5D:4E:18:B2
+Not an IP packet,34525,2048
+Destination MAC: 33:33:00:00:00:16
+Source MAC: 00:15:5D:4E:18:B2
+Not an IP packet,34525,2048
+Destination MAC: 33:33:00:00:00:16
+Source MAC: 00:15:5D:4E:18:B2
+Received IP Packet:
+Version: 4
+Header Length: 20 bytes
+Total Length: 1109 bytes
+Source IP: 172.19.64.1
+Destination IP: 239.255.255.250
+Protocol: 17
+
+Not an IP packet,34525,2048
+Destination MAC: 33:33:00:00:00:16
+Source MAC: 00:15:5D:4E:18:B2
+Not an IP packet,34525,2048
+Destination MAC: 33:33:00:00:00:16
+Source MAC: 00:15:5D:4E:18:B2
+Received IP Packet:
+Version: 4
+Header Length: 20 bytes
+Total Length: 56 bytes
+Source IP: 172.19.64.1
+Destination IP: 224.0.0.251
+Protocol: 17
+
+Received IP Packet:
+Version: 4
+Header Length: 20 bytes
+Total Length: 114 bytes
+Source IP: 172.19.64.1
+Destination IP: 224.0.0.251
+Protocol: 17
+
+Not an IP packet,34525,2048
+Destination MAC: 33:33:00:00:00:FB
+Source MAC: 00:15:5D:4E:18:B2
+Not an IP packet,34525,2048
+Destination MAC: 33:33:00:00:00:FB
+Source MAC: 00:15:5D:4E:18:B2
+Received IP Packet:
+Version: 4
+Header Length: 20 bytes
+Total Length: 94 bytes
+Source IP: 172.19.64.1
+Destination IP: 224.0.0.251
+Protocol: 17
+
+Received IP Packet:
+Version: 4
+Header Length: 20 bytes
+Total Length: 1109 bytes
+Source IP: 172.19.64.1
+Destination IP: 239.255.255.250
+Protocol: 17
+
+Not an IP packet,34525,2048
+Destination MAC: 33:33:00:00:00:0C
+Source MAC: 00:15:5D:4E:18:B2
+Received IP Packet:
+Version: 4
+Header Length: 20 bytes
+Total Length: 56 bytes
+Source IP: 172.19.64.1
+Destination IP: 224.0.0.251
+Protocol: 17
+
+Not an IP packet,34525,2048
+Destination MAC: 33:33:00:00:00:FB
+Source MAC: 00:15:5D:4E:18:B2
+Received IP Packet:
+Version: 4
+Header Length: 20 bytes
+Total Length: 94 bytes
+Source IP: 172.19.64.1
+Destination IP: 224.0.0.251
+Protocol: 17
+
+Not an IP packet,34525,2048
+Destination MAC: 33:33:00:00:00:FB
+Source MAC: 00:15:5D:4E:18:B2
+Not an IP packet,34525,2048
+Destination MAC: 33:33:00:00:00:0C
+Source MAC: 00:15:5D:4E:18:B2
+Received IP Packet:
+Version: 4
+Header Length: 20 bytes
+Total Length: 1109 bytes
+Source IP: 172.19.64.1
+Destination IP: 239.255.255.250
+Protocol: 17
+
+Received IP Packet:
+Version: 4
+Header Length: 20 bytes
+Total Length: 1109 bytes
+Source IP: 172.19.64.1
+Destination IP: 239.255.255.250
+Protocol: 17
+
+Not an IP packet,34525,2048
+Destination MAC: 33:33:00:00:00:0C
+Source MAC: 00:15:5D:4E:18:B2
+Received IP Packet:
+Version: 4
+Header Length: 20 bytes
+Total Length: 1109 bytes
+Source IP: 172.19.64.1
+Destination IP: 239.255.255.250
+Protocol: 17
+
+Not an IP packet,34525,2048
+Destination MAC: 33:33:00:00:00:0C
+Source MAC: 00:15:5D:4E:18:B2
+Received IP Packet:
+Version: 4
+Header Length: 20 bytes
+Total Length: 1109 bytes
+Source IP: 172.19.64.1
+Destination IP: 239.255.255.250
+Protocol: 17
+
+Not an IP packet,34525,2048
+Destination MAC: 33:33:00:00:00:0C
+Source MAC: 00:15:5D:4E:18:B2
+Not an IP packet,34525,2048
+Destination MAC: 33:33:00:00:00:0C
+Source MAC: 00:15:5D:4E:18:B2
+Received IP Packet:
+Version: 4
+Header Length: 20 bytes
+Total Length: 1109 bytes
+Source IP: 172.19.64.1
+Destination IP: 239.255.255.250
+Protocol: 17
+
+Received IP Packet:
+Version: 4
+Header Length: 20 bytes
+Total Length: 1109 bytes
+Source IP: 172.19.64.1
+Destination IP: 239.255.255.250
+Protocol: 17
+
+Not an IP packet,34525,2048
+Destination MAC: 33:33:00:00:00:16
+Source MAC: 00:15:5D:4E:18:B2
+Not an IP packet,34525,2048
+Destination MAC: 33:33:00:00:00:0C
+Source MAC: 00:15:5D:4E:18:B2
+Received IP Packet:
+Version: 4
+Header Length: 20 bytes
+Total Length: 1109 bytes
+Source IP: 172.19.64.1
+Destination IP: 239.255.255.250
+Protocol: 17
+
+Not an IP packet,34525,2048
+Destination MAC: 33:33:00:00:00:0C
+Source MAC: 00:15:5D:4E:18:B2
+Not an IP packet,34525,2048
+Destination MAC: 33:33:00:00:00:0C
+Source MAC: 00:15:5D:4E:18:B2
+Received IP Packet:
+Version: 4
+Header Length: 20 bytes
+Total Length: 70 bytes
+Source IP: 172.19.64.1
+Destination IP: 224.0.0.251
+Protocol: 17
+
+Not an IP packet,34525,2048
+Destination MAC: 33:33:00:00:00:FB
+Source MAC: 00:15:5D:4E:18:B2
+Received IP Packet:
+Version: 4
+Header Length: 20 bytes
+Total Length: 1109 bytes
+Source IP: 172.19.64.1
+Destination IP: 239.255.255.250
+Protocol: 17
+
+Not an IP packet,34525,2048
+Destination MAC: 33:33:00:00:00:0C
+Source MAC: 00:15:5D:4E:18:B2
+Received IP Packet:
+Version: 4
+Header Length: 20 bytes
+Total Length: 70 bytes
+Source IP: 172.19.64.1
+Destination IP: 224.0.0.251
+Protocol: 17
+
+Not an IP packet,34525,2048
+Destination MAC: 33:33:00:00:00:FB
+Source MAC: 00:15:5D:4E:18:B2
+Received IP Packet:
+Version: 4
+Header Length: 20 bytes
+Total Length: 70 bytes
+Source IP: 172.19.64.1
+Destination IP: 224.0.0.251
+Protocol: 17
+
+Not an IP packet,34525,2048
+Destination MAC: 33:33:00:00:00:FB
+Source MAC: 00:15:5D:4E:18:B2
+Received IP Packet:
+Version: 4
+Header Length: 20 bytes
+Total Length: 158 bytes
+Source IP: 172.19.64.1
+Destination IP: 224.0.0.251
+Protocol: 17
+
+Not an IP packet,34525,2048
+Destination MAC: 33:33:00:00:00:FB
+Source MAC: 00:15:5D:4E:18:B2
+Received IP Packet:
+Version: 4
+Header Length: 20 bytes
+Total Length: 158 bytes
+Source IP: 172.19.64.1
+Destination IP: 224.0.0.251
+Protocol: 17
+
+Not an IP packet,34525,2048
+Destination MAC: 33:33:00:00:00:FB
+Source MAC: 00:15:5D:4E:18:B2
+Received IP Packet:
+Version: 4
+Header Length: 20 bytes
+Total Length: 165 bytes
+Source IP: 172.19.64.1
+Destination IP: 239.255.255.250
+Protocol: 17
+
+Received IP Packet:
+Version: 4
+Header Length: 20 bytes
+Total Length: 163 bytes
+Source IP: 172.19.64.1
+Destination IP: 239.255.255.250
+Protocol: 17
+
+Received IP Packet:
+Version: 4
+Header Length: 20 bytes
+Total Length: 165 bytes
+Source IP: 172.19.64.1
+Destination IP: 239.255.255.250
+Protocol: 17
+
+Received IP Packet:
+Version: 4
+Header Length: 20 bytes
+Total Length: 165 bytes
+Source IP: 172.19.64.1
+Destination IP: 239.255.255.250
+Protocol: 17
+
+Received IP Packet:
+Version: 4
+Header Length: 20 bytes
+Total Length: 165 bytes
+Source IP: 172.19.64.1
+Destination IP: 239.255.255.250
+Protocol: 17
+
+Received IP Packet:
+Version: 4
+Header Length: 20 bytes
+Total Length: 165 bytes
+Source IP: 172.19.64.1
+Destination IP: 239.255.255.250
+Protocol: 17
+

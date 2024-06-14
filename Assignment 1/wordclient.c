@@ -39,7 +39,7 @@ int main()
     int serverlen=sizeof(serveraddr);
     while(1)
     {
-        int len=recvfrom(sockid,buffer,maxlen,0,(struct sockaddr*)&serveraddr,&serverlen);
+        int len=recvfrom(sockid,buffer,maxlen,MSG_WAITALL,(struct sockaddr*)&serveraddr,&serverlen);
         buffer[len]='\0';
         char temp[1100];
         strcpy(temp,"NOTFOUND ");

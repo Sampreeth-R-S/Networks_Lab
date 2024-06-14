@@ -10,25 +10,10 @@
 #include <net/if.h>
 #include <netinet/if_ether.h>
 #include <sys/ioctl.h>
-#include <linux/ip.h>
-#include <linux/if_ether.h>
-
-#define MAX_DOMAIN_SIZE 32
-#define MAX_QUERIES 8
-
-typedef struct {
-    uint16_t id;
-    uint8_t message_type;
-    uint8_t num_queries;
-    struct {
-        uint8_t size;
-        char domain[MAX_DOMAIN_SIZE];
-    } queries[MAX_QUERIES];
-} simDNS_QueryPacket;
-
+#include <netinet/ip.h>
 
 int main() {
-    // Create a raw socket for receiving DNS queries
+    // Create a raw socket for receiving all Ethernet types
     int sockfd = socket(AF_PACKET, SOCK_RAW, htons(ETH_P_ALL));
     if (sockfd < 0) {
         perror("socket");
@@ -42,55 +27,72 @@ int main() {
     bzero(&sll, sizeof(sll));
     bzero(&ifr, sizeof(ifr));
 
-    strcpy((char *)ifr.ifr_name, "enp0s3");
-    // strcpy((char *)ifr.ifr_name, "lo");
+    strcpy((char *)ifr.ifr_name, "eth0"); // Change interface name as needed
 
-    if ((ioctl(sockfd, SIOCGIFINDEX, &ifr)) == -1)
-    {
+    if ((ioctl(sockfd, SIOCGIFINDEX, &ifr)) == -1) {
         perror("Unable to find interface index");
         close(sockfd);
-        exit(1);
+        exit(EXIT_FAILURE);
     }
 
     sll.sll_family = AF_PACKET;
     sll.sll_ifindex = ifr.ifr_ifindex;
-    sll.sll_protocol = htons(ETH_P_ALL);
 
-    if (bind(sockfd, (struct sockaddr *)&sll, sizeof(sll)) < 0)
-    {
+    if (bind(sockfd, (struct sockaddr *)&sll, sizeof(sll)) < 0) {
         perror("Bind failed");
         close(sockfd);
-        exit(1);
+        exit(EXIT_FAILURE);
     }
 
-    printf("Server is listening for DNS queries...\n");
+    printf("Server is listening for Ethernet packets...\n");
 
-    // Main server loop to receive and handle DNS queries
+    // Main server loop to receive and handle Ethernet packets
     while (1) {
-        simDNS_QueryPacket query_packet;
+        unsigned char buffer[2048];
+        struct sockaddr_in source, dest;
+        struct ethhdr *eth_header;
 
-        // Receive DNS query
-        ssize_t bytes_received = recv(sockfd, &query_packet, sizeof(query_packet), 0);
+        // Receive Ethernet packet
+        ssize_t bytes_received = recv(sockfd, buffer, sizeof(buffer), 0);
         if (bytes_received < 0) {
             perror("recv");
             continue;
         }
 
-        // Process received DNS query
-        printf("Received DNS query:\n");
-        printf("ID: %u\n", query_packet.id);
-        printf("Message Type: %u\n", query_packet.message_type);
-        printf("Number of Queries: %u\n", query_packet.num_queries);
+        // Extract Ethernet header
+        eth_header = (struct ethhdr *)buffer;
 
-        for (int i = 0; i < query_packet.num_queries; i++) {
-            printf("Query %d: %s\n", i + 1, query_packet.queries[i].domain);
+        // Check if it's an IP packet
+        if (ntohs(eth_header->h_proto) != ETH_P_IP)
+        {
+            printf("Not an IP packet,%d,%d\n",ntohs(eth_header->h_proto),ETH_P_IP);
+            printf("Destination MAC: %02X:%02X:%02X:%02X:%02X:%02X\n",
+                   eth_header->h_dest[0], eth_header->h_dest[1], eth_header->h_dest[2],
+                   eth_header->h_dest[3], eth_header->h_dest[4], eth_header->h_dest[5]);
+            printf("Source MAC: %02X:%02X:%02X:%02X:%02X:%02X\n",eth_header->h_source[0], eth_header->h_source[1], eth_header->h_source[2],
+                   eth_header->h_source[3], eth_header->h_source[4], eth_header->h_source[5]);
+            continue;
         }
 
-        // Simulate DNS response (not implemented in this example)
-        // You would typically formulate a DNS response here and send it back to the client
+        // Extract IP header
+        struct iphdr *ip_header = (struct iphdr *)(buffer + sizeof(struct ethhdr));
 
-        // For this example, we'll simply print a message indicating that the response is simulated
-        printf("Simulated DNS response sent.\n");
+        // Print IP packet content
+        printf("Received IP Packet:\n");
+        printf("Version: %u\n", (unsigned int)ip_header->version);
+        printf("Header Length: %u bytes\n", (unsigned int)(ip_header->ihl * 4));
+        printf("Total Length: %u bytes\n", ntohs(ip_header->tot_len));
+        printf("Source IP: %s\n", inet_ntoa(*(struct in_addr *)&ip_header->saddr));
+        printf("Destination IP: %s\n", inet_ntoa(*(struct in_addr *)&ip_header->daddr));
+        printf("Protocol: %u\n", (unsigned int)ip_header->protocol);
+        printf("Destination MAC: %02X:%02X:%02X:%02X:%02X:%02X\n",
+                   eth_header->h_dest[0], eth_header->h_dest[1], eth_header->h_dest[2],
+                   eth_header->h_dest[3], eth_header->h_dest[4], eth_header->h_dest[5]);
+            printf("Source MAC: %02X:%02X:%02X:%02X:%02X:%02X\n",eth_header->h_source[0], eth_header->h_source[1], eth_header->h_source[2],
+                   eth_header->h_source[3], eth_header->h_source[4], eth_header->h_source[5]);
+        printf("Length: %d\n",ip_header->tot_len);
+        printf("Id: %d\n",ip_header->id);
+        printf("\n");
     }
 
     // Close the socket

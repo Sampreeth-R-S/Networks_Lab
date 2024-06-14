@@ -34,16 +34,22 @@ int main()
     {
         perror("Error in sendto");
     }
-    for(int i=0;i<20;i++)
+    FILE* fp=fopen("Sample500(copy).txt","w");
+    for(int i=0;1;i++)
     {
         temp=-1;
         //struct sockaddr_in cliaddr;
         while(temp==-1)
         {
-            temp = m_recvfrom(sockfd,buffer,1024,0,&cliaddr,&temp1);
+            temp = m_recvfrom(sockfd,buffer,1022,0,&cliaddr,&temp1);
             sleep(1);
         }
         printf("Message received: %s\n",buffer);
+        fwrite(buffer,1,strlen(buffer),fp);
+        if(strlen(buffer)<1022)
+        {
+            break;
+        }
     }
     return 0;
 }

@@ -65,8 +65,8 @@ void AppendIPHeader(unsigned char *packet)
     ip->ttl = 255;
     ip->protocol = 254;
     ip->check = 0;
-    ip->saddr = inet_addr("127.0.0.1");
-    ip->daddr = inet_addr("127.0.0.1");
+    ip->saddr = inet_addr("172.19.65.212");
+    ip->daddr = inet_addr("172.19.65.212");
 
     ip->check = 0;
 
@@ -284,9 +284,11 @@ int main() {
 
         // Print packet details after appending data
         printf("\nPacket Details After Appending Data:\n");
+        struct ethhdr *eth = (struct ethhdr *)packet;
         printf("Ethernet Header:\n");
         printf("Source MAC: %02x:%02x:%02x:%02x:%02x:%02x\n", packet[6], packet[7], packet[8], packet[9], packet[10], packet[11]);
         printf("Destination MAC: %02x:%02x:%02x:%02x:%02x:%02x\n", packet[0], packet[1], packet[2], packet[3], packet[4], packet[5]);
+        printf("Protocol: %d\n", ntohs(eth->h_proto));
         printf("IP Header:\n");
         struct iphdr *ip = (struct iphdr *)(packet + sizeof(struct ethhdr));
         printf("Source IP: %s\n", inet_ntoa(*(struct in_addr *)&ip->saddr));

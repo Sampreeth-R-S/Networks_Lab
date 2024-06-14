@@ -30,18 +30,31 @@ int main()
     cliaddr.sin_family = AF_INET;
     cliaddr.sin_port = htons(8002);
     inet_pton(AF_INET,"127.0.0.1",&cliaddr.sin_addr);
-    for(int i=0;i<10;i++)
+    // for(int i=0;i<10;i++)
+    // {
+    //     char buffer[1024];
+    //     sprintf(buffer,"Frame %d",i);
+    //     int temp=m_sendto(sockfd,buffer,strlen(buffer)+2,0,cliaddr,sizeof(cliaddr));
+    // }
+    // sleep(100);
+    // for(int i=0;i<10;i++)
+    // {
+    //     char buffer[1024];
+    //     sprintf(buffer,"Frame %d",i);
+    //     int temp=m_sendto(sockfd,buffer,strlen(buffer)+2,0,cliaddr,sizeof(cliaddr));
+    // }
+    FILE* fp = fopen("Sample500.txt","r");
+    while(!feof(fp))
     {
         char buffer[1024];
-        sprintf(buffer,"Frame %d",i);
-        int temp=m_sendto(sockfd,buffer,strlen(buffer)+2,0,cliaddr,sizeof(cliaddr));
-    }
-    sleep(100);
-    for(int i=0;i<10;i++)
-    {
-        char buffer[1024];
-        sprintf(buffer,"Frame %d",i);
-        int temp=m_sendto(sockfd,buffer,strlen(buffer)+2,0,cliaddr,sizeof(cliaddr));
+        int len = fread(buffer,1,1022,fp);
+        int temp=m_sendto(sockfd,buffer,strlen(buffer)+1,0,cliaddr,sizeof(cliaddr));
+        while(temp==-1)
+        {
+            temp=m_sendto(sockfd,buffer,strlen(buffer)+1,0,cliaddr,sizeof(cliaddr));
+            sleep(1);
+        }
+        printf("Sent %d bytes\n",len);
     }
     sleep(100);
     m_close(sockfd);
